@@ -100,7 +100,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r backend/requirements.txt
 
       - name: Run Scraper
         env:
@@ -109,6 +109,8 @@ jobs:
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
           SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           ARGS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -145,26 +147,13 @@ jobs:
             if [ "${{ github.event.inputs.my_schedule }}" = "true" ]; then
               ARGS="$ARGS --my-schedule"
             fi
+            
+            # If manually triggered, we unset Supabase credentials to force fallback to local CLI mode
+            unset SUPABASE_URL
+            unset SUPABASE_KEY
           else
-            # 定时触发 / API 触发：默认使用最严格的个人日程过滤 + 只看有空位的场次
-            ARGS="--available --my-schedule"
+            # 定时触发 / API 触发：默认使用 Supabase 模式，不需要任何 CLI 过滤参数
+            ARGS=""
           fi
           
-          # 运行抓取，如果匹配到新场地会自动发送邮件
-          python scraper.py $ARGS
-
-      - name: Commit and Save Alert History
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Actions"
-          if [ -f "sent_alerts.json" ]; then
-            git add -f sent_alerts.json
-            # 仅在 sent_alerts.json 确实有变动时才进行提交和推送，避免空提交报错
-            if ! git diff-index --quiet HEAD --; then
-              git commit -m "Update sent alerts history [skip ci]"
-              git pull --rebase origin main
-              git push
-            else
-              echo "No changes to alert history. Skipping push."
-            fi
-          fi
+          python backend/scraper.py $ARGS
