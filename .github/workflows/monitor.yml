@@ -147,10 +147,6 @@ jobs:
             if [ "${{ github.event.inputs.my_schedule }}" = "true" ]; then
               ARGS="$ARGS --my-schedule"
             fi
-            
-            # If manually triggered, we unset Supabase credentials to force fallback to local CLI mode
-            unset SUPABASE_URL
-            unset SUPABASE_KEY
           else
             # 定时触发 / API 触发：默认使用 Supabase 模式，不需要任何 CLI 过滤参数
             ARGS=""

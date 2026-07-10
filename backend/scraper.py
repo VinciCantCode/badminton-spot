@@ -582,6 +582,23 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
     # 4. Upsert all slots into Supabase (so dashboard is updated)
     if all_slots_payload:
         upsert_slots_to_supabase(supabase_url, supabase_key, all_slots_payload)
+        
+        # Also print to stdout for monitoring visibility
+        headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]
+        formatted_table = []
+        for s in all_slots_payload:
+            time_range = f"{datetime.fromisoformat(s['start_time']).strftime('%I:%M %p').lower()} - {datetime.fromisoformat(s['end_time']).strftime('%I:%M %p').lower()}"
+            formatted_table.append([
+                s["date_desc"],
+                time_range,
+                s["location_name"],
+                s["event_name"],
+                s["spots"],
+                f"${s['price']:.2f}",
+                s["button_text"]
+            ])
+        print(f"\nFound {len(all_slots_payload)} booking slots (also synced to Supabase):\n")
+        print(tabulate(formatted_table, headers=headers, tablefmt="grid"))
 
     # 5. Perform matchmaking and build email alerts grouped by receiver email
     email_alerts = {} # map: email -> list of matched slot payloads
