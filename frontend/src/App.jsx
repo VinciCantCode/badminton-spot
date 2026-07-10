@@ -11,11 +11,13 @@ import {
   CheckCircle,
   RefreshCw,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  Search
 } from 'lucide-react'
 import './App.css'
 
-// Hardcoded locations for checkboxes in filter and modal
+// Hardcoded locations for dropdown
 const LOCATIONS = [
   { id: 'Delbrook', name: 'Delbrook Community Centre' },
   { id: 'Parkgate', name: 'Parkgate Community Centre' },
@@ -25,7 +27,16 @@ const LOCATIONS = [
 ]
 
 // Weekdays mapping
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEKDAY_FULL_NAMES = {
+  Mon: 'Monday',
+  Tue: 'Tuesday',
+  Wed: 'Wednesday',
+  Thu: 'Thursday',
+  Fri: 'Friday',
+  Sat: 'Saturday',
+  Sun: 'Sunday'
+}
 
 function App() {
   // State
@@ -34,9 +45,11 @@ function App() {
   const [error, setError] = useState(null)
   
   // Filtering States
-  const [selectedLocations, setSelectedLocations] = useState([])
+  const [selectedLocation, setSelectedLocation] = useState('All Locations')
+  const [selectedDate, setSelectedDate] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
-  const [showAvailableOnly, setShowAvailableOnly] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false)
   
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -75,17 +88,11 @@ function App() {
     }
   }
 
-  // Location filter toggle
-  const toggleLocationFilter = (locId) => {
-    setSelectedLocations(prev =>
-      prev.includes(locId) ? prev.filter(id => id !== locId) : [...prev, locId]
-    )
-  }
-
   // Weekday filter toggle
-  const toggleDayFilter = (dayName) => {
+  const toggleDayFilter = (dayAbbr) => {
+    const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
     setSelectedDays(prev =>
-      prev.includes(dayName) ? prev.filter(d => d !== dayName) : [...prev, dayName]
+      prev.includes(fullName) ? prev.filter(d => d !== fullName) : [...prev, fullName]
     )
   }
 
@@ -106,23 +113,40 @@ function App() {
 
   // Filter slots
   const filteredSlots = slots.filter(slot => {
-    // 1. Availability filter
+    // 1. Availability filter (if checked, hide full slots)
     if (showAvailableOnly && slot.spots_count === 0) {
       return false
     }
 
     // 2. Location filter
-    if (selectedLocations.length > 0) {
-      const matchesLoc = selectedLocations.some(locId =>
-        slot.location_name.toLowerCase().includes(locId.toLowerCase())
-      )
-      if (!matchesLoc) return false
+    if (selectedLocation !== 'All Locations') {
+      if (!slot.location_name.toLowerCase().includes(selectedLocation.toLowerCase())) {
+        return false
+      }
     }
 
-    // 3. Day filter
+    // 3. Date filter
+    if (selectedDate) {
+      try {
+        const slotDate = new Date(slot.start_time).toISOString().split('T')[0]
+        if (slotDate !== selectedDate) return false
+      } catch {
+        return false
+      }
+    }
+
+    // 4. Day filter
     if (selectedDays.length > 0) {
       const slotDay = getWeekdayFromDateDesc(slot.date_desc)
       if (!selectedDays.includes(slotDay)) return false
+    }
+
+    // 5. Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      const matchName = slot.event_name.toLowerCase().includes(query)
+      const matchLoc = slot.location_name.toLowerCase().includes(query)
+      if (!matchName && !matchLoc) return false
     }
 
     return true
@@ -143,10 +167,6 @@ function App() {
     // Parse start time to prefill
     try {
       const dateObj = new Date(slot.start_time)
-      const hours = String(dateObj.getHours()).padStart(2, '0')
-      const minutes = String(dateObj.getMinutes()).padStart(2, '0')
-      
-      // We set range around the slot time (e.g. from 1 hour before to 1 hour after)
       const minHour = String(Math.max(0, dateObj.getHours() - 1)).padStart(2, '0')
       const maxHour = String(Math.min(23, dateObj.getHours() + 1)).padStart(2, '0')
       
@@ -181,7 +201,7 @@ function App() {
       const { error } = await supabase.from('subscriptions').insert({
         email,
         locations: modalLocations.length > 0 ? modalLocations : LOCATIONS.map(l => l.id),
-        weekdays: modalDays.length > 0 ? modalDays : WEEKDAYS,
+        weekdays: modalDays.length > 0 ? modalDays : Object.values(WEEKDAY_FULL_NAMES),
         start_time_min: startTimeMin,
         start_time_max: startTimeMax,
         is_active: true
@@ -223,160 +243,224 @@ function App() {
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="app-header glass-panel">
+      <header className="app-header">
         <div className="brand-section">
           <Activity className="brand-icon" size={32} />
-          <h1 className="brand-title">BadmintonSpot</h1>
+          <div>
+            <h1 className="brand-title">BadmintonSpot</h1>
+            <p className="brand-subtitle">Court Reservation Dashboard</p>
+          </div>
         </div>
-        <div className="sync-status">
-          <span className="status-dot"></span>
-          <span>Live Sync Active</span>
-          <button 
-            onClick={fetchSlots} 
-            className="close-btn" 
-            style={{ position: 'relative', top: 0, right: 0, padding: '2px' }}
-            title="Refresh availability"
-          >
-            <RefreshCw size={14} className={loading ? "spinner" : ""} />
-          </button>
+        
+        <div className="header-right">
+          <div className="sync-status">
+            <span className="status-dot"></span>
+            <span>Live Sync</span>
+            <button 
+              onClick={fetchSlots} 
+              className="refresh-btn" 
+              title="Refresh availability"
+            >
+              <RefreshCw size={14} className={loading ? "spinner" : ""} />
+            </button>
+          </div>
+          <div className="notification-icon-container">
+            <Bell size={20} className="bell-icon" />
+            <span className="bell-badge"></span>
+          </div>
+          <div className="user-profile">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Avatar" className="avatar-img" />
+            <span className="user-name">Alex R.</span>
+            <ChevronDown size={14} className="user-chevron" />
+          </div>
         </div>
       </header>
 
-      {/* Filters Bar */}
-      <section className="filters-bar glass-panel">
-        {/* Locations */}
-        <div className="filter-group">
-          <span className="filter-label">Locations</span>
-          <div className="filter-pills">
-            {LOCATIONS.map(loc => (
-              <button
-                key={loc.id}
-                onClick={() => toggleLocationFilter(loc.id)}
-                className={`filter-pill ${selectedLocations.includes(loc.id) ? 'active' : ''}`}
-              >
-                {loc.id}
-              </button>
-            ))}
-          </div>
+      {/* Main Two-Column Layout */}
+      <div className="main-content-layout">
+        
+        {/* Left Hero Column */}
+        <div className="left-hero">
+          <h2 className="hero-title">Find & Reserve Your Court</h2>
+          <p className="hero-subtitle">
+            Filter available courts or set alerts for your preferred times.
+          </p>
         </div>
 
-        {/* Days of Week */}
-        <div className="filter-group">
-          <span className="filter-label">Weekdays</span>
-          <div className="filter-pills">
-            {WEEKDAYS.map(day => (
-              <button
-                key={day}
-                onClick={() => toggleDayFilter(day)}
-                className={`filter-pill ${selectedDays.includes(day) ? 'active' : ''}`}
-              >
-                {day.substring(0, 3)}
-              </button>
-            ))}
+        {/* Right Dashboard Column */}
+        <div className="right-dashboard">
+          
+          {/* Horizontal Filters Bar */}
+          <section className="filters-bar-horizontal glass-panel">
+            {/* Location Selector */}
+            <div className="horizontal-filter-item">
+              <span className="horizontal-filter-label">Locations</span>
+              <div className="select-wrapper">
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="dropdown-select"
+                >
+                  <option value="All Locations">All Locations</option>
+                  {LOCATIONS.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.id}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="dropdown-arrow" />
+              </div>
+            </div>
+
+            {/* Date Picker */}
+            <div className="horizontal-filter-item">
+              <span className="horizontal-filter-label">Date</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="date-input"
+              />
+            </div>
+
+            {/* Weekdays pills */}
+            <div className="horizontal-filter-item flex-grow">
+              <span className="horizontal-filter-label">Weekdays</span>
+              <div className="filter-pills-row">
+                {WEEKDAYS.map(day => {
+                  const fullName = WEEKDAY_FULL_NAMES[day]
+                  const isActive = selectedDays.includes(fullName)
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => toggleDayFilter(day)}
+                      className={`filter-pill-small ${isActive ? 'active' : ''}`}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="horizontal-filter-item">
+              <span className="horizontal-filter-label">&nbsp;</span>
+              <div className="search-input-container">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Toggle Control Row */}
+          <div className="toggle-controls-row">
+            <div 
+              className={`toggle-container ${showAvailableOnly ? 'active' : ''}`}
+              onClick={() => setShowAvailableOnly(!showAvailableOnly)}
+            >
+              <div className="toggle-switch"></div>
+              <span className="toggle-label">Show Available Only</span>
+            </div>
+            <button onClick={handleNewAlertClick} className="subscribe-btn-main">
+              <Bell size={16} />
+              <span>Create Alert</span>
+            </button>
           </div>
+
+          {/* Slots List View */}
+          <div className="dashboard-content-area">
+            {loading ? (
+              <div className="empty-state glass-panel">
+                <RefreshCw size={48} className="spinner empty-icon" />
+                <h2 className="empty-title">Loading courts...</h2>
+                <p className="empty-desc">Fetching live booking availability from NVRC PerfectMind.</p>
+              </div>
+            ) : error ? (
+              <div className="empty-state glass-panel">
+                <AlertTriangle size={48} className="empty-icon" style={{ color: '#ef4444' }} />
+                <h2 className="empty-title">Error Loading Data</h2>
+                <p className="empty-desc">{error}</p>
+              </div>
+            ) : filteredSlots.length === 0 ? (
+              <div className="empty-state glass-panel">
+                <Calendar size={48} className="empty-icon" />
+                <h2 className="empty-title">No courts found</h2>
+                <p className="empty-desc">Adjust your filters or toggle "Show Available Only" to view booked/full schedules.</p>
+              </div>
+            ) : (
+              <div className="slots-container">
+                {filteredSlots.map(slot => {
+                  const isFull = slot.spots_count === 0
+                  // Parse date to prettier format
+                  const rawDate = slot.date_desc || ''
+                  const timeRange = slot.time_desc || ''
+
+                  return (
+                    <div key={slot.event_id} className="slot-card glass-panel">
+                      <div className="slot-header">
+                        <span className="location-tag">{slot.location_name.split(' ')[0]}</span>
+                        <span className={`status-badge ${isFull ? 'full' : 'available'}`}>
+                          {isFull ? 'Full' : 'Available'}
+                        </span>
+                      </div>
+
+                      <h3 className="slot-title">{slot.event_name}</h3>
+
+                      <div className="slot-details">
+                        <div className="detail-item">
+                          <Calendar size={14} className="detail-icon" />
+                          <span>{rawDate}</span>
+                        </div>
+                        <div className="detail-item">
+                          <Clock size={14} className="detail-icon" />
+                          <span>{timeRange}</span>
+                        </div>
+                        <div className="detail-item">
+                          <MapPin size={14} className="detail-icon" />
+                          <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={slot.location_name}>
+                            {slot.location_name}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="slot-footer">
+                        <span className="slot-price">${slot.price.toFixed(2)}</span>
+                        {isFull ? (
+                          <button 
+                            onClick={() => handleAlertMeClick(slot)} 
+                            className="action-btn alert"
+                          >
+                            <Bell size={14} />
+                            <span>Alert Me</span>
+                          </button>
+                        ) : (
+                          <a 
+                            href="https://nvrc.perfectmind.com/23734/Clients/BookMe4BookingPages/BookingCoursesPage?calendarId=107644e1-183f-4052-a809-52e13ec76293&widgetId=a28b2c65-61af-407f-80d1-eaa58f30a94a&embed=False" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="action-btn book"
+                            style={{ textDecoration: 'none' }}
+                          >
+                            <span>Book Now</span>
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {/* Toggle & Action */}
-        <div className="filter-controls-row">
-          <div 
-            className={`toggle-container ${showAvailableOnly ? 'active' : ''}`}
-            onClick={() => setShowAvailableOnly(!showAvailableOnly)}
-          >
-            <div className="toggle-switch"></div>
-            <span className="toggle-label">Show Available Only</span>
-          </div>
-
-          <button onClick={handleNewAlertClick} className="subscribe-btn-main">
-            <Bell size={18} />
-            <span>Create Custom Alert</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Main Grid View */}
-      <main>
-        {loading ? (
-          <div className="empty-state glass-panel">
-            <RefreshCw size={48} className="spinner empty-icon" />
-            <h2 className="empty-title">Loading courts...</h2>
-            <p className="empty-desc">Fetching live booking availability from NVRC PerfectMind.</p>
-          </div>
-        ) : error ? (
-          <div className="empty-state glass-panel">
-            <AlertTriangle size={48} className="empty-icon" style={{ color: '#ef4444' }} />
-            <h2 className="empty-title">Error Loading Data</h2>
-            <p className="empty-desc">{error}</p>
-          </div>
-        ) : filteredSlots.length === 0 ? (
-          <div className="empty-state glass-panel">
-            <Calendar size={48} className="empty-icon" />
-            <h2 className="empty-title">No courts found</h2>
-            <p className="empty-desc">Adjust your filters or toggle "Show Available Only" to view booked/full schedules.</p>
-          </div>
-        ) : (
-          <div className="slots-container">
-            {filteredSlots.map(slot => {
-              const isFull = slot.spots_count === 0
-              const formattedTime = slot.date_desc
-              const timeRange = slot.time_desc || ''
-
-              return (
-                <div key={slot.event_id} className="slot-card glass-panel">
-                  <div className="slot-header">
-                    <span className="location-tag">{slot.location_name.split(' ')[0]}</span>
-                    <span className={`status-badge ${isFull ? 'full' : 'available'}`}>
-                      {isFull ? 'Full' : `${slot.spots_count} spots`}
-                    </span>
-                  </div>
-
-                  <h3 className="slot-title">{slot.event_name}</h3>
-
-                  <div className="slot-details">
-                    <div className="detail-item">
-                      <Calendar size={14} className="detail-icon" />
-                      <span>{formattedTime}</span>
-                    </div>
-                    <div className="detail-item">
-                      <Clock size={14} className="detail-icon" />
-                      <span>{timeRange}</span>
-                    </div>
-                    <div className="detail-item">
-                      <MapPin size={14} className="detail-icon" />
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={slot.location_name}>
-                        {slot.location_name}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="slot-footer">
-                    <span className="slot-price">${slot.price.toFixed(2)}</span>
-                    {isFull ? (
-                      <button 
-                        onClick={() => handleAlertMeClick(slot)} 
-                        className="action-btn alert"
-                      >
-                        <Bell size={14} />
-                        <span>Alert Me</span>
-                      </button>
-                    ) : (
-                      <a 
-                        href="https://nvrc.perfectmind.com/23734/Clients/BookMe4BookingPages/BookingCoursesPage?calendarId=107644e1-183f-4052-a809-52e13ec76293&widgetId=a28b2c65-61af-407f-80d1-eaa58f30a94a&embed=False" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="action-btn book"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <span>Book Now</span>
-                        <ExternalLink size={14} />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </main>
+      </div>
 
       {/* Subscription Modal */}
       {isModalOpen && (
@@ -427,19 +511,22 @@ function App() {
                   <div className="form-group">
                     <label className="form-label">Weekdays</label>
                     <div className="checkbox-grid">
-                      {WEEKDAYS.map(day => (
-                        <label key={day} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={modalDays.includes(day)}
-                            onChange={() => handleModalDayToggle(day)}
-                          />
-                          <span className="checkbox-custom">
-                            {modalDays.includes(day) && <CheckCircle size={14} />}
-                          </span>
-                          <span>{day.substring(0, 3)}</span>
-                        </label>
-                      ))}
+                      {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
+                        const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
+                        return (
+                          <label key={dayAbbr} className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={modalDays.includes(fullName)}
+                              onChange={() => handleModalDayToggle(fullName)}
+                            />
+                            <span className="checkbox-custom">
+                              {modalDays.includes(fullName) && <CheckCircle size={14} />}
+                            </span>
+                            <span>{dayAbbr}</span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
 
