@@ -5,6 +5,11 @@ backend/.venv/
 **/*.pyc
 **/*.pyo
 
+# Environment variables & secrets
+.env
+*.env
+.env.*
+
 # Local configuration and alerts history
 backend/config.json
 backend/sent_alerts.json
