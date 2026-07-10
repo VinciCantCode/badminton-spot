@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import {
-  Activity,
   Calendar,
   MapPin,
   Clock,
@@ -16,6 +15,33 @@ import {
   Search
 } from 'lucide-react'
 import './App.css'
+
+// Custom yellow shuttlecock icon representing BadmintonSpot
+const ShuttlecockIcon = ({ size = 24, className }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    {/* Cork base */}
+    <path d="M12 20c1.657 0 3-1.343 3-3H9c0 1.657 1.343 3 3 3z" fill="currentColor" />
+    {/* Feather cage */}
+    <path d="M9 17L5 5h14l-4 12" />
+    {/* Inside feathers ribs */}
+    <path d="M12 17V5" />
+    <path d="M10.5 17l-2.5-12" />
+    <path d="M13.5 17l2.5-12" />
+    {/* Rib band */}
+    <path d="M7.5 11h9" />
+    <path d="M6.5 8h11" />
+  </svg>
+)
 
 // Hardcoded locations for dropdown
 const LOCATIONS = [
@@ -245,7 +271,7 @@ function App() {
       {/* Header */}
       <header className="app-header">
         <div className="brand-section">
-          <Activity className="brand-icon" size={32} />
+          <ShuttlecockIcon className="brand-icon" size={32} />
           <div>
             <h1 className="brand-title">BadmintonSpot</h1>
             <p className="brand-subtitle">Court Reservation Dashboard</p>
