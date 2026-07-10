@@ -1,4 +1,4 @@
-name: 🏸 NVRC Badminton Monitor
+name: badminton-spot monitor
 
 on:
   workflow_dispatch:
