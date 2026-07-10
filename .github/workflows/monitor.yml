@@ -1,0 +1,170 @@
+name: 🏸 NVRC Badminton Monitor
+
+on:
+  workflow_dispatch:
+    # 手动控制面板配置：使用复选框来筛选场馆和星期几
+    inputs:
+      # 场馆多选
+      loc_delbrook:
+        description: 'Delbrook Community Recreation Centre'
+        type: boolean
+        required: true
+        default: true
+      loc_jbcc:
+        description: 'John Braithwaite Community Centre (JBCC)'
+        type: boolean
+        required: true
+        default: true
+      loc_lions_gate:
+        description: 'Lions Gate Community Recreation Centre'
+        type: boolean
+        required: true
+        default: true
+      loc_lynn_creek:
+        description: 'Lynn Creek Community Recreation Centre'
+        type: boolean
+        required: true
+        default: true
+      loc_parkgate:
+        description: 'Parkgate Community Centre'
+        type: boolean
+        required: true
+        default: true
+
+      # 星期几多选
+      day_monday:
+        description: 'Monday (周一)'
+        type: boolean
+        required: true
+        default: true
+      day_tuesday:
+        description: 'Tuesday (周二)'
+        type: boolean
+        required: true
+        default: true
+      day_wednesday:
+        description: 'Wednesday (周三)'
+        type: boolean
+        required: true
+        default: true
+      day_thursday:
+        description: 'Thursday (周四)'
+        type: boolean
+        required: true
+        default: true
+      day_friday:
+        description: 'Friday (周五)'
+        type: boolean
+        required: true
+        default: true
+      day_saturday:
+        description: 'Saturday (周六)'
+        type: boolean
+        required: true
+        default: false
+      day_sunday:
+        description: 'Sunday (周日)'
+        type: boolean
+        required: true
+        default: false
+
+      available:
+        description: '仅显示/提醒当前有空余场次 (Available)'
+        type: boolean
+        required: true
+        default: true
+      my_schedule:
+        description: '使用个人工作日程过滤 (工作日18:00后，周末全天)'
+        type: boolean
+        required: true
+        default: true
+
+  repository_dispatch:
+    # 用于通过外部 cron-job.org 精准触发
+    types: [run-monitor]
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 授予写入权限以推回 sent_alerts.json 去重历史文件
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Scraper
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # 1. 汇总复选框选中的场馆
+            LOCS=""
+            if [ "${{ github.event.inputs.loc_delbrook }}" = "true" ]; then LOCS="$LOCS Delbrook"; fi
+            if [ "${{ github.event.inputs.loc_jbcc }}" = "true" ]; then LOCS="$LOCS JBCC"; fi
+            if [ "${{ github.event.inputs.loc_lions_gate }}" = "true" ]; then LOCS="$LOCS Lions"; fi
+            if [ "${{ github.event.inputs.loc_lynn_creek }}" = "true" ]; then LOCS="$LOCS Lynn"; fi
+            if [ "${{ github.event.inputs.loc_parkgate }}" = "true" ]; then LOCS="$LOCS Parkgate"; fi
+            
+            if [ -n "$LOCS" ]; then
+              ARGS="$ARGS --location $LOCS"
+            fi
+            
+            # 2. 汇总复选框选中的星期几
+            DAYS=""
+            if [ "${{ github.event.inputs.day_monday }}" = "true" ]; then DAYS="$DAYS Monday"; fi
+            if [ "${{ github.event.inputs.day_tuesday }}" = "true" ]; then DAYS="$DAYS Tuesday"; fi
+            if [ "${{ github.event.inputs.day_wednesday }}" = "true" ]; then DAYS="$DAYS Wednesday"; fi
+            if [ "${{ github.event.inputs.day_thursday }}" = "true" ]; then DAYS="$DAYS Thursday"; fi
+            if [ "${{ github.event.inputs.day_friday }}" = "true" ]; then DAYS="$DAYS Friday"; fi
+            if [ "${{ github.event.inputs.day_saturday }}" = "true" ]; then DAYS="$DAYS Saturday"; fi
+            if [ "${{ github.event.inputs.day_sunday }}" = "true" ]; then DAYS="$DAYS Sunday"; fi
+            
+            if [ -n "$DAYS" ]; then
+              ARGS="$ARGS --days $DAYS"
+            fi
+            
+            # 3. 其他常规开关
+            if [ "${{ github.event.inputs.available }}" = "true" ]; then
+              ARGS="$ARGS --available"
+            fi
+            if [ "${{ github.event.inputs.my_schedule }}" = "true" ]; then
+              ARGS="$ARGS --my-schedule"
+            fi
+          else
+            # 定时触发 / API 触发：默认使用最严格的个人日程过滤 + 只看有空位的场次
+            ARGS="--available --my-schedule"
+          fi
+          
+          # 运行抓取，如果匹配到新场地会自动发送邮件
+          python scraper.py $ARGS
+
+      - name: Commit and Save Alert History
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          if [ -f "sent_alerts.json" ]; then
+            git add -f sent_alerts.json
+            # 仅在 sent_alerts.json 确实有变动时才进行提交和推送，避免空提交报错
+            if ! git diff-index --quiet HEAD --; then
+              git commit -m "Update sent alerts history [skip ci]"
+              git pull --rebase origin main
+              git push
+            else
+              echo "No changes to alert history. Skipping push."
+            fi
+          fi

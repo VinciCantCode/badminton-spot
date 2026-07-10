@@ -1,0 +1,8 @@
+.venv/
+config.json
+__pycache__/
+sent_alerts.json
+*.pyc
+*.pyo
+.idea/
+.vscode/
