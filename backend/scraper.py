@@ -56,20 +56,23 @@ def load_config():
         }
 
     # Otherwise fallback to config.json
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            file_config = json.load(f)
-            # Ensure types are correct
-            if "smtp_port" in file_config:
-                file_config["smtp_port"] = int(file_config["smtp_port"])
-            if "monitor_interval_seconds" in file_config:
-                file_config["monitor_interval_seconds"] = int(file_config["monitor_interval_seconds"])
-            return file_config
-    except FileNotFoundError:
-        return None
-    except Exception as e:
-        print(f"Warning: Error reading config.json: {e}", file=sys.stderr)
-        return None
+    paths = ["config.json", "backend/config.json", "../config.json"]
+    for path in paths:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                file_config = json.load(f)
+                # Ensure types are correct
+                if "smtp_port" in file_config:
+                    file_config["smtp_port"] = int(file_config["smtp_port"])
+                if "monitor_interval_seconds" in file_config:
+                    file_config["monitor_interval_seconds"] = int(file_config["monitor_interval_seconds"])
+                return file_config
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            print(f"Warning: Error reading {path}: {e}", file=sys.stderr)
+            return None
+    return None
 
 def load_sent_alerts():
     """Reads sent alerts history to prevent duplicates."""
@@ -349,7 +352,308 @@ def process_scraping(args, config, sent_alerts):
 
     return matched_slots, new_alerts
 
+def load_env_file():
+    """Loads environment variables from .env file into os.environ if it exists."""
+    import os
+    # Try to find .env in current directory, backend directory, or parent directory
+    paths = [".env", "backend/.env", "../.env"]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            key, val = line.split("=", 1)
+                            # Strip quotes if present
+                            val = val.strip().strip('"').strip("'")
+                            os.environ[key.strip()] = val
+                break
+            except Exception as e:
+                print(f"Warning: Error loading .env file from {p}: {e}", file=sys.stderr)
+
+def parse_to_iso_datetimes(date_desc, time_desc):
+    """Parses date_desc and time_desc into ISO-8601 string representations for start_time and end_time.
+    e.g. date_desc = "Fri, Jul 3rd, 2026", time_desc = "06:45 pm - 07:45 pm"
+    """
+    try:
+        # Clean ordinal suffixes
+        cleaned_date = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', date_desc)
+        if ',' in cleaned_date:
+            date_part = cleaned_date.split(',', 1)[1].strip()
+        else:
+            date_part = cleaned_date.strip()
+
+        times = [t.strip() for t in time_desc.split('-')]
+        start_time_str = times[0]
+        end_time_str = times[1] if len(times) > 1 else times[0]
+
+        # Use local timezone to generate timezone-aware ISO format
+        local_tz = datetime.now().astimezone().tzinfo
+
+        start_dt_str = f"{date_part} {start_time_str}"
+        start_dt = datetime.strptime(start_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=local_tz)
+        
+        end_dt_str = f"{date_part} {end_time_str}"
+        end_dt = datetime.strptime(end_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=local_tz)
+
+        return start_dt.isoformat(), end_dt.isoformat()
+    except Exception as e:
+        print(f"Error parsing datetime to ISO: {e}", file=sys.stderr)
+        return None, None
+
+def parse_spots_count(spots):
+    """Extracts numeric spot count from spots string."""
+    if not spots:
+        # If spots is empty, it means "Available (Book)" without a count
+        return 1
+    if "Full" in spots or "FULL" in spots:
+        return 0
+    match = re.search(r'\d+', spots)
+    if match:
+        return int(match.group())
+    if "Available" in spots or "Book" in spots or "More Info" in spots:
+        return 1
+    return 0
+
+def fetch_active_subscriptions(supabase_url, supabase_key):
+    """Fetches all active subscriptions from Supabase."""
+    url = f"{supabase_url}/rest/v1/subscriptions?is_active=eq.true"
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json"
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Error fetching active subscriptions from Supabase: {e}", file=sys.stderr)
+        return []
+
+def upsert_slots_to_supabase(supabase_url, supabase_key, slots):
+    """Upserts list of slots into Supabase 'slots' table."""
+    if not slots:
+        return
+    url = f"{supabase_url}/rest/v1/slots"
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+    try:
+        response = requests.post(url, headers=headers, json=slots, timeout=15)
+        response.raise_for_status()
+        print(f"Successfully upserted {len(slots)} slots to Supabase.")
+    except Exception as e:
+        print(f"Error upserting slots to Supabase: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response details: {e.response.text}", file=sys.stderr)
+
+def try_log_alert_history(supabase_url, supabase_key, subscription_id, event_id, spots_count):
+    """Tries to log a sent notification in Supabase 'alert_history'.
+    Returns True if the insert succeeded (meaning it's a new alert).
+    Returns False if it failed or conflicted (meaning alert already sent).
+    """
+    url = f"{supabase_url}/rest/v1/alert_history"
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "subscription_id": subscription_id,
+        "event_id": event_id,
+        "spots_count": spots_count
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code == 201:
+            return True
+        elif response.status_code == 409:
+            # 409 Conflict: Already exists (unique constraint violated)
+            return False
+        else:
+            # Other errors (e.g. invalid foreign keys)
+            print(f"Alert history log returned status {response.status_code}: {response.text}", file=sys.stderr)
+            return False
+    except Exception as e:
+        print(f"Error logging alert history in Supabase: {e}", file=sys.stderr)
+        return False
+
+def check_time_in_range(start_time_iso, min_time_str, max_time_str):
+    """Checks if a slot's ISO start time is within the min and max time range strings (e.g. '18:00:00')."""
+    try:
+        # Extract the time part from ISO string (e.g., '2026-07-10T18:45:00-07:00' -> '18:45:00')
+        dt = datetime.fromisoformat(start_time_iso)
+        slot_time = dt.time()
+        
+        # Parse boundary times
+        min_time = datetime.strptime(min_time_str, "%H:%M:%S").time()
+        max_time = datetime.strptime(max_time_str, "%H:%M:%S").time()
+        
+        return min_time <= slot_time <= max_time
+    except Exception as e:
+        print(f"Error checking time range: {e}", file=sys.stderr)
+        return False
+
+def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
+    """Runs a single scraper cycle in Supabase multi-user mode."""
+    # 1. Fetch active subscriptions
+    subscriptions = fetch_active_subscriptions(supabase_url, supabase_key)
+    if not subscriptions:
+        print("No active subscriptions found in Supabase. Only updating slots dashboard.")
+
+    # 2. Scrape raw courses from PerfectMind
+    session = requests.Session()
+    token = fetch_anti_forgery_token(session)
+    if not token:
+        print("Failed to obtain anti-forgery token in this cycle.", file=sys.stderr)
+        return
+
+    courses = fetch_booking_courses(session, token)
+    if not courses:
+        print("No courses returned from the API in this cycle.")
+        return
+
+    # 3. Parse and process all scraped slots
+    all_slots_payload = []
+    available_slots = [] # parsed structures for matchmaking
+    
+    for c in courses:
+        location = c.get("Location", "")
+        event_name = c.get("EventName", "")
+        time_desc = c.get("EventTimeDescription", "")
+        date_desc = c.get("FormattedStartDate", "")
+        formatted_start_time = c.get("FormattedStartTime", "")
+        spots = c.get("Spots", "").strip()
+        price_str = c.get("PriceRange", "").replace("$", "").strip()
+        button_text = c.get("BookButtonText", "")
+        event_id = c.get("EventId", "")
+
+        # Skip slots that are not actual badminton courts
+        if "Badminton" not in event_name:
+            continue
+
+        # Skip slots that are not yet open for registration
+        if button_text == "More Info" and not spots:
+            continue
+
+        # Parse prices
+        try:
+            price = float(price_str)
+        except ValueError:
+            price = 16.36 # default standard price
+
+        # Parse spots count
+        spots_count = parse_spots_count(spots)
+
+        # Parse ISO start and end times
+        start_time_iso, end_time_iso = parse_to_iso_datetimes(date_desc, time_desc)
+        if not start_time_iso or not end_time_iso:
+            continue
+
+        # Skip past slots
+        if is_past_slot(date_desc, formatted_start_time):
+            continue
+
+        # Prepare payload for Supabase slots table
+        slot_payload = {
+            "event_id": event_id,
+            "event_name": event_name,
+            "location_name": location,
+            "date_desc": date_desc,
+            "start_time": start_time_iso,
+            "end_time": end_time_iso,
+            "spots": spots if spots else "Available",
+            "spots_count": spots_count,
+            "price": price,
+            "button_text": button_text,
+            "last_updated": datetime.now().astimezone().isoformat()
+        }
+        all_slots_payload.append(slot_payload)
+
+        # If it is available, add to available_slots list for matchmaking
+        if spots_count > 0:
+            available_slots.append(slot_payload)
+
+    # 4. Upsert all slots into Supabase (so dashboard is updated)
+    if all_slots_payload:
+        upsert_slots_to_supabase(supabase_url, supabase_key, all_slots_payload)
+
+    # 5. Perform matchmaking and build email alerts grouped by receiver email
+    email_alerts = {} # map: email -> list of matched slot payloads
+    
+    for sub in subscriptions:
+        sub_id = sub.get("id")
+        sub_email = sub.get("email")
+        pref_locations = sub.get("locations", [])
+        pref_weekdays = sub.get("weekdays", [])
+        start_min = sub.get("start_time_min", "00:00:00")
+        start_max = sub.get("start_time_max", "23:59:59")
+
+        for slot in available_slots:
+            # Match Location
+            loc_match = False
+            for loc in pref_locations:
+                if loc.lower() in slot["location_name"].lower():
+                    loc_match = True
+                    break
+            if not loc_match and pref_locations: # If pref_locations is empty, default to match all
+                continue
+
+            # Match Weekday
+            day_of_week = parse_day_from_date(slot["date_desc"])
+            day_match = False
+            for day in pref_weekdays:
+                if day.lower() in day_of_week.lower():
+                    day_match = True
+                    break
+            if not day_match and pref_weekdays: # If pref_weekdays is empty, default to match all
+                continue
+
+            # Match Time Range
+            if not check_time_in_range(slot["start_time"], start_min, start_max):
+                continue
+
+            # If all match, try to write to alert_history (atomically checking deduplication)
+            if try_log_alert_history(supabase_url, supabase_key, sub_id, slot["event_id"], slot["spots_count"]):
+                # Succeeded! This is a new alert.
+                if sub_email not in email_alerts:
+                    email_alerts[sub_email] = []
+                email_alerts[sub_email].append(slot)
+
+    # 6. Send batched emails
+    if email_alerts:
+        print(f"Detected matched alerts for {len(email_alerts)} user(s). Sending emails...")
+        for recipient_email, matched_slots in email_alerts.items():
+            # Customize the receiver_email in config dynamically for sending
+            user_config = config.copy()
+            user_config["receiver_email"] = recipient_email
+            
+            # Format slots for the existing HTML template
+            # Table columns expected by send_email_notification:
+            # slot[0]=date, slot[1]=time, slot[2]=location, slot[3]=event_name, slot[4]=status, slot[5]=price
+            formatted_slots = []
+            for s in matched_slots:
+                time_range = f"{datetime.fromisoformat(s['start_time']).strftime('%I:%M %p').lower()} - {datetime.fromisoformat(s['end_time']).strftime('%I:%M %p').lower()}"
+                formatted_slots.append([
+                    s["date_desc"],
+                    time_range,
+                    s["location_name"],
+                    s["event_name"],
+                    s["spots"],
+                    f"${s['price']:.2f}"
+                ])
+            
+            send_email_notification(user_config, formatted_slots)
+    else:
+        print("No new matches found or all alerts were already notified in this cycle.")
+
 def main():
+    import os
     parser = argparse.ArgumentParser(description="NVRC Badminton Court Booking Scraper & Monitor")
     parser.add_argument("-l", "--location", nargs="+", help="Filter by locations (space separated, e.g., Delbrook JBCC)")
     parser.add_argument("-d", "--days", nargs="+", help="Filter by day of week (e.g. Tuesday Thursday)")
@@ -358,58 +662,81 @@ def main():
     parser.add_argument("-m", "--monitor", action="store_true", help="Enable continuous monitoring mode with email notifications")
     args = parser.parse_args()
 
+    # Load environment variables from local file
+    load_env_file()
     config = load_config()
 
-    if not args.monitor:
-        # Standard one-off execution
-        print("Connecting to NVRC PerfectMind portal to retrieve session cookies and token...")
-        sent_alerts = load_sent_alerts() if config else set()
-        matched, new_alerts = process_scraping(args, config, sent_alerts)
-        if not matched:
-            print("\nNo slots matched your filters.")
-            return
-        headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]
-        print(f"\nFound {len(matched)} booking slots:\n")
-        print(tabulate(matched, headers=headers, tablefmt="grid"))
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_KEY")
 
-        if config and new_alerts:
-            print(f"Detected {len(new_alerts)} new available/updated slot(s)!")
-            if send_email_notification(config, new_alerts):
-                save_sent_alerts(sent_alerts)
+    if supabase_url and supabase_key:
+        print("Supabase credentials found. Running in Supabase mode...")
+        if args.monitor:
+            interval = config.get("monitor_interval_seconds", 300) if config else 300
+            print(f"Continuous Supabase monitoring started. Checking every {interval} seconds...")
+            try:
+                while True:
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"\n[{timestamp}] Supabase scraping cycle started...")
+                    run_supabase_monitor_cycle(config, supabase_url, supabase_key)
+                    print(f"Cycle finished. Sleeping for {interval} seconds...")
+                    time.sleep(interval)
+            except KeyboardInterrupt:
+                print("\nMonitoring stopped by user.")
+        else:
+            run_supabase_monitor_cycle(config, supabase_url, supabase_key)
     else:
-        # Continuous monitoring mode
-        if not config:
-            print("Error: config.json is required for monitoring mode. Please check README.md for configuration instructions.", file=sys.stderr)
-            sys.exit(1)
-        
-        interval = config.get("monitor_interval_seconds", 300)
-        print(f"Continuous monitoring mode started. Checking every {interval} seconds...")
-        sent_alerts = load_sent_alerts()
+        print("Supabase credentials not found. Falling back to local CLI mode...")
+        if not args.monitor:
+            # Standard one-off execution
+            print("Connecting to NVRC PerfectMind portal to retrieve session cookies and token...")
+            sent_alerts = load_sent_alerts() if config else set()
+            matched, new_alerts = process_scraping(args, config, sent_alerts)
+            if not matched:
+                print("\nNo slots matched your filters.")
+                return
+            headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]
+            print(f"\nFound {len(matched)} booking slots:\n")
+            print(tabulate(matched, headers=headers, tablefmt="grid"))
 
-        try:
-            while True:
-                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-                print(f"\n[{timestamp}] Scraping cycle started...")
-                
-                matched, new_alerts = process_scraping(args, config, sent_alerts)
-                
-                if matched:
-                    headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]
-                    print(tabulate(matched, headers=headers, tablefmt="grid"))
-                else:
-                    print("No slots matched your filters in this cycle.")
+            if config and new_alerts:
+                print(f"Detected {len(new_alerts)} new available/updated slot(s)!")
+                if send_email_notification(config, new_alerts):
+                    save_sent_alerts(sent_alerts)
+        else:
+            # Continuous monitoring mode
+            if not config:
+                print("Error: config.json is required for monitoring mode. Please check README.md for configuration instructions.", file=sys.stderr)
+                sys.exit(1)
+            
+            interval = config.get("monitor_interval_seconds", 300)
+            print(f"Continuous monitoring mode started. Checking every {interval} seconds...")
+            sent_alerts = load_sent_alerts()
 
-                if new_alerts:
-                    print(f"Detected {len(new_alerts)} new available/updated slot(s)!")
-                    if send_email_notification(config, new_alerts):
-                        save_sent_alerts(sent_alerts)
-                else:
-                    print("No new slots to notify (no changes since last alert).")
+            try:
+                while True:
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"\n[{timestamp}] Scraping cycle started...")
+                    
+                    matched, new_alerts = process_scraping(args, config, sent_alerts)
+                    
+                    if matched:
+                        headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]
+                        print(tabulate(matched, headers=headers, tablefmt="grid"))
+                    else:
+                        print("No slots matched your filters in this cycle.")
 
-                print(f"Cycle finished. Sleeping for {interval} seconds...")
-                time.sleep(interval)
-        except KeyboardInterrupt:
-            print("\nMonitoring stopped by user.")
+                    if new_alerts:
+                        print(f"Detected {len(new_alerts)} new available/updated slot(s)!")
+                        if send_email_notification(config, new_alerts):
+                            save_sent_alerts(sent_alerts)
+                    else:
+                        print("No new slots to notify (no changes since last alert).")
+
+                    print(f"Cycle finished. Sleeping for {interval} seconds...")
+                    time.sleep(interval)
+            except KeyboardInterrupt:
+                print("\nMonitoring stopped by user.")
 
 if __name__ == "__main__":
     main()
