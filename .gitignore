@@ -1,8 +1,19 @@
+# Python Virtual Environment
 .venv/
-config.json
-__pycache__/
-sent_alerts.json
-*.pyc
-*.pyo
+backend/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Local configuration and alerts history
+backend/config.json
+backend/sent_alerts.json
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+
+# IDE / Editor configuration files
 .idea/
 .vscode/
+.DS_Store
