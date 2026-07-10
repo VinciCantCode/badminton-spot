@@ -42,6 +42,10 @@
   margin: 0;
 }
 
+.brand-title span {
+  color: var(--accent-neon);
+}
+
 .brand-subtitle {
   font-size: 11px;
   color: var(--text-muted);

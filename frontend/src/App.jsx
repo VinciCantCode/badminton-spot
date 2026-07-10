@@ -273,7 +273,7 @@ function App() {
         <div className="brand-section">
           <ShuttlecockIcon className="brand-icon" size={32} />
           <div>
-            <h1 className="brand-title">BadmintonSpot</h1>
+            <h1 className="brand-title">Badminton<span>Spot</span></h1>
             <p className="brand-subtitle">Court Reservation Dashboard</p>
           </div>
         </div>
