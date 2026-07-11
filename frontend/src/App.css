@@ -166,7 +166,6 @@
   flex-direction: column;
   gap: 16px;
   max-width: 440px;
-  user-select: none;
 }
 
 .hero-title {
