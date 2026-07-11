@@ -161,7 +161,7 @@
 
 /* Left Hero Column */
 .left-hero {
-  padding-top: 10vh; /* Pushes the hero text down so it aligns with the court bg nicely */
+  padding-top: 8px; /* Perfectly aligns the text baseline with the right-side filter bar */
   display: flex;
   flex-direction: column;
   gap: 16px;
