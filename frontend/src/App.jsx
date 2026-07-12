@@ -93,6 +93,15 @@ function App() {
   const [verificationError, setVerificationError] = useState('')
   const [sendingCode, setSendingCode] = useState(false)
 
+  // Unsubscribe States
+  const [unsubscribeEmail, setUnsubscribeEmail] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('unsubscribe')
+  })
+  const [unsubscribing, setUnsubscribing] = useState(false)
+  const [unsubscribeSuccess, setUnsubscribeSuccess] = useState(false)
+  const [unsubscribeError, setUnsubscribeError] = useState('')
+
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('')
 
@@ -314,6 +323,99 @@ function App() {
   const handleModalDayToggle = (dayName) => {
     setModalDays(prev =>
       prev.includes(dayName) ? prev.filter(d => d !== dayName) : [...prev, dayName]
+    )
+  }
+
+  // Handle Unsubscribe Action
+  const handleConfirmUnsubscribe = async () => {
+    setUnsubscribing(true)
+    setUnsubscribeError('')
+    try {
+      const response = await fetch('/api/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: unsubscribeEmail })
+      })
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to process unsubscribe request')
+      }
+
+      setUnsubscribeSuccess(true)
+      showToast('Successfully unsubscribed!')
+    } catch (err) {
+      console.error('Error during unsubscribe:', err)
+      setUnsubscribeError(err.message || 'Failed to unsubscribe. Please try again.')
+    } finally {
+      setUnsubscribing(false)
+    }
+  }
+
+  // Conditional Rendering for Unsubscribe View
+  if (unsubscribeEmail) {
+    return (
+      <div className="unsubscribe-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.15), rgba(11, 15, 25, 0.45)), url("/bg-court.jpg") no-repeat 25% 90% fixed', backgroundSize: 'cover', padding: '20px' }}>
+        <div className="unsubscribe-card glass-panel" style={{ maxWidth: '480px', width: '100%', padding: '40px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', textAlign: 'center' }}>
+          <ShuttlecockIcon className="brand-icon" size={48} style={{ margin: '0 auto 20px', color: 'var(--accent-neon)' }} />
+          
+          {!unsubscribeSuccess ? (
+            <>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px' }}>Cancel Court Alerts</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', marginBottom: '25px' }}>
+                Are you sure you want to stop receiving all live badminton court alerts for:
+                <strong style={{ display: 'block', color: 'var(--accent-neon)', fontSize: '18px', marginTop: '10px', wordBreak: 'break-all' }}>{unsubscribeEmail}</strong>
+              </p>
+
+              {unsubscribeError && (
+                <div style={{ color: '#ef4444', marginBottom: '20px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                  <AlertTriangle size={16} />
+                  <span>{unsubscribeError}</span>
+                </div>
+              )}
+
+              <button 
+                onClick={handleConfirmUnsubscribe}
+                disabled={unsubscribing}
+                className="submit-btn"
+                style={{ width: '100%', padding: '12px', fontSize: '16px', fontWeight: 'bold', borderRadius: '8px', border: 'none', background: 'var(--accent-neon)', color: '#090d16', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 4px 14px rgba(223, 255, 0, 0.2)', marginBottom: '20px' }}
+              >
+                {unsubscribing ? 'Processing...' : 'Confirm Unsubscribe'}
+              </button>
+
+              <button 
+                onClick={() => {
+                  setUnsubscribeEmail(null)
+                  window.history.pushState({}, '', '/')
+                }}
+                className="back-to-step1-btn"
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}
+              >
+                Cancel and Go to Dashboard
+              </button>
+            </>
+          ) : (
+            <>
+              <CheckCircle size={64} style={{ color: 'var(--accent-neon)', margin: '0 auto 20px' }} />
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px' }}>Unsubscribed Successfully</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>
+                You have been removed from all monitoring lists. You will no longer receive any alert emails at:
+                <strong style={{ display: 'block', color: 'var(--text-primary)', marginTop: '8px', wordBreak: 'break-all' }}>{unsubscribeEmail}</strong>
+              </p>
+              <button 
+                onClick={() => {
+                  setUnsubscribeEmail(null)
+                  window.history.pushState({}, '', '/')
+                }}
+                className="submit-btn"
+                style={{ width: '100%', padding: '12px', fontSize: '16px', fontWeight: 'bold', borderRadius: '8px', border: 'none', background: 'var(--accent-neon)', color: '#090d16', cursor: 'pointer', transition: 'all 0.3s ease' }}
+              >
+                Go to Dashboard
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     )
   }
 

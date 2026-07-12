@@ -143,7 +143,10 @@ def send_email_notification(config, new_slots):
         </table>
         <br/>
         <p>Booking link: <a href="{BOOKING_PAGE_URL}" style="color: #1a73e8; font-weight: bold; text-decoration: none;">Book Now on NVRC PerfectMind</a></p>
-        <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">This is an automated notification from BadmintonSpot. Please do not reply to this email.</p>
+        <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            This is an automated notification from BadmintonSpot. Please do not reply to this email.<br/>
+            Want to stop receiving alerts? <a href="https://badminton-spot.vercel.app/?unsubscribe={receiver}" style="color: #ef4444; text-decoration: underline;">Unsubscribe here</a>.
+        </p>
     </body>
     </html>
     """
