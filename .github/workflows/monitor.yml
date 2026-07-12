@@ -2,9 +2,9 @@ name: badminton-spot monitor
 
 on:
   workflow_dispatch:
-    # 手动控制面板配置：使用复选框来筛选场馆和星期几
+    # Manual control panel: select locations and weekdays
     inputs:
-      # 场馆多选
+      # Locations selection
       loc_delbrook:
         description: 'Delbrook Community Recreation Centre'
         type: boolean
@@ -31,63 +31,63 @@ on:
         required: true
         default: true
 
-      # 星期几多选
+      # Weekdays selection
       day_monday:
-        description: 'Monday (周一)'
+        description: 'Monday'
         type: boolean
         required: true
         default: true
       day_tuesday:
-        description: 'Tuesday (周二)'
+        description: 'Tuesday'
         type: boolean
         required: true
         default: true
       day_wednesday:
-        description: 'Wednesday (周三)'
+        description: 'Wednesday'
         type: boolean
         required: true
         default: true
       day_thursday:
-        description: 'Thursday (周四)'
+        description: 'Thursday'
         type: boolean
         required: true
         default: true
       day_friday:
-        description: 'Friday (周五)'
+        description: 'Friday'
         type: boolean
         required: true
         default: true
       day_saturday:
-        description: 'Saturday (周六)'
+        description: 'Saturday'
         type: boolean
         required: true
         default: false
       day_sunday:
-        description: 'Sunday (周日)'
+        description: 'Sunday'
         type: boolean
         required: true
         default: false
 
       available:
-        description: '仅显示/提醒当前有空余场次 (Available)'
+        description: 'Show available court slots only'
         type: boolean
         required: true
         default: true
       my_schedule:
-        description: '使用个人工作日程过滤 (工作日18:00后，周末全天)'
+        description: 'Filter by personal schedule (After 18:00 weekdays, all day weekends)'
         type: boolean
         required: true
         default: true
 
   repository_dispatch:
-    # 用于通过外部 cron-job.org 精准触发
+    # Triggered externally via cron-job.org
     types: [run-monitor]
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 授予写入权限以推回 sent_alerts.json 去重历史文件
+      contents: write # Grant write permission to commit changes
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -114,7 +114,7 @@ jobs:
         run: |
           ARGS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # 1. 汇总复选框选中的场馆
+            # 1. Aggregate selected locations
             LOCS=""
             if [ "${{ github.event.inputs.loc_delbrook }}" = "true" ]; then LOCS="$LOCS Delbrook"; fi
             if [ "${{ github.event.inputs.loc_jbcc }}" = "true" ]; then LOCS="$LOCS JBCC"; fi
@@ -126,7 +126,7 @@ jobs:
               ARGS="$ARGS --location $LOCS"
             fi
             
-            # 2. 汇总复选框选中的星期几
+            # 2. Aggregate selected weekdays
             DAYS=""
             if [ "${{ github.event.inputs.day_monday }}" = "true" ]; then DAYS="$DAYS Monday"; fi
             if [ "${{ github.event.inputs.day_tuesday }}" = "true" ]; then DAYS="$DAYS Tuesday"; fi
@@ -140,7 +140,7 @@ jobs:
               ARGS="$ARGS --days $DAYS"
             fi
             
-            # 3. 其他常规开关
+            # 3. Other toggles
             if [ "${{ github.event.inputs.available }}" = "true" ]; then
               ARGS="$ARGS --available"
             fi
@@ -148,7 +148,7 @@ jobs:
               ARGS="$ARGS --my-schedule"
             fi
           else
-            # 定时触发 / API 触发：默认使用 Supabase 模式，不需要任何 CLI 过滤参数
+            # Cron/API trigger: default to Supabase mode, no CLI filtering arguments needed
             ARGS=""
           fi
           

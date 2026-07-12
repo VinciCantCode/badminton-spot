@@ -87,6 +87,12 @@ function App() {
   const [submitting, setSubmitting] = useState(false)
   const [subscribeSuccess, setSubscribeSuccess] = useState(false)
 
+  // Verification Step States
+  const [verificationStep, setVerificationStep] = useState(1) // 1: criteria/email, 2: code input
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verificationError, setVerificationError] = useState('')
+  const [sendingCode, setSendingCode] = useState(false)
+
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('')
 
@@ -204,6 +210,9 @@ function App() {
     }
 
     setSubscribeSuccess(false)
+    setVerificationStep(1)
+    setVerificationCode('')
+    setVerificationError('')
     setIsModalOpen(true)
   }
 
@@ -214,32 +223,74 @@ function App() {
     setStartTimeMin('00:00:00')
     setStartTimeMax('23:59:59')
     setSubscribeSuccess(false)
+    setVerificationStep(1)
+    setVerificationCode('')
+    setVerificationError('')
     setIsModalOpen(true)
   }
 
-  // Submit Alert Subscription
-  const handleSubscribeSubmit = async (e) => {
+  // Phase 1: Send Verification Code to Email
+  const handleSendCodeSubmit = async (e) => {
     e.preventDefault()
     if (!email) return
 
-    setSubmitting(true)
+    setSendingCode(true)
+    setVerificationError('')
     try {
-      const { error } = await supabase.from('subscriptions').insert({
-        email,
-        locations: modalLocations.length > 0 ? modalLocations : LOCATIONS.map(l => l.id),
-        weekdays: modalDays.length > 0 ? modalDays : Object.values(WEEKDAY_FULL_NAMES),
-        start_time_min: startTimeMin,
-        start_time_max: startTimeMax,
-        is_active: true
+      const response = await fetch('/api/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          locations: modalLocations.length > 0 ? modalLocations : LOCATIONS.map(l => l.id),
+          weekdays: modalDays.length > 0 ? modalDays : Object.values(WEEKDAY_FULL_NAMES),
+          start_time_min: startTimeMin,
+          start_time_max: startTimeMax
+        })
       })
 
-      if (error) throw error
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send verification code')
+      }
+
+      setVerificationStep(2)
+      showToast('Verification code sent to your email!')
+    } catch (err) {
+      console.error('Error sending code:', err)
+      setVerificationError(err.message || 'Failed to send verification code. Please try again.')
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
+  // Phase 2: Verify Code and Save Subscription
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault()
+    if (!email || !verificationCode) return
+
+    setSubmitting(true)
+    setVerificationError('')
+    try {
+      const response = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          code: verificationCode
+        })
+      })
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Invalid verification code')
+      }
 
       setSubscribeSuccess(true)
-      showToast('Subscription created successfully!')
+      showToast('Subscription verified successfully!')
     } catch (err) {
-      console.error('Error creating subscription:', err)
-      showToast('Failed to create subscription. Please try again.')
+      console.error('Error verifying code:', err)
+      setVerificationError(err.message || 'Verification failed. Please check the code.')
     } finally {
       setSubmitting(false)
     }
@@ -498,121 +549,175 @@ function App() {
 
             {!subscribeSuccess ? (
               <>
-                <h2 className="modal-title">🔔 Create Court Alert</h2>
-                <form onSubmit={handleSubscribeSubmit}>
-                  {/* Email */}
-                  <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. zenith.peak77@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
+                {verificationStep === 1 ? (
+                  <>
+                    <h2 className="modal-title">🔔 Create Court Alert</h2>
+                    <form onSubmit={handleSendCodeSubmit}>
+                      {/* Email */}
+                      <div className="form-group">
+                        <label className="form-label">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="e.g. yourname@domain.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="form-input"
+                        />
+                      </div>
 
-                  {/* Locations */}
-                  <div className="form-group">
-                    <label className="form-label">Locations (Select to Filter)</label>
-                    <div className="checkbox-grid">
-                      {LOCATIONS.map(loc => (
-                        <label key={loc.id} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={modalLocations.includes(loc.id)}
-                            onChange={() => handleModalLocationToggle(loc.id)}
-                          />
-                          <span className="checkbox-custom">
-                            {modalLocations.includes(loc.id) && <CheckCircle size={14} />}
-                          </span>
-                          <span>{loc.id}</span>
+                      {/* Locations */}
+                      <div className="form-group">
+                        <label className="form-label">Locations (Select to Filter)</label>
+                        <div className="checkbox-grid">
+                          {LOCATIONS.map(loc => (
+                            <label key={loc.id} className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={modalLocations.includes(loc.id)}
+                                onChange={() => handleModalLocationToggle(loc.id)}
+                              />
+                              <span className="checkbox-custom">
+                                {modalLocations.includes(loc.id) && <CheckCircle size={14} />}
+                              </span>
+                              <span>{loc.id}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Weekdays */}
+                      <div className="form-group">
+                        <label className="form-label">Weekdays</label>
+                        <div className="checkbox-grid">
+                          {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
+                            const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
+                            return (
+                              <label key={dayAbbr} className="checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={modalDays.includes(fullName)}
+                                  onChange={() => handleModalDayToggle(fullName)}
+                                />
+                                  <span className="checkbox-custom">
+                                    {modalDays.includes(fullName) && <CheckCircle size={14} />}
+                                  </span>
+                                <span>{dayAbbr}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Time Range */}
+                      <div className="form-group">
+                        <label className="form-label">Preferred Time Range</label>
+                        <div className="time-range-group">
+                          <select
+                            value={startTimeMin}
+                            onChange={(e) => setStartTimeMin(e.target.value)}
+                            className="time-select"
+                          >
+                            <option value="00:00:00">Any Time</option>
+                            <option value="06:00:00">After 6:00 AM</option>
+                            <option value="09:00:00">After 9:00 AM</option>
+                            <option value="12:00:00">After 12:00 PM</option>
+                            <option value="15:00:00">After 3:00 PM</option>
+                            <option value="17:00:00">After 5:00 PM</option>
+                            <option value="18:00:00">After 6:00 PM</option>
+                            <option value="19:00:00">After 7:00 PM</option>
+                          </select>
+                          <span style={{ color: 'var(--text-secondary)' }}>to</span>
+                          <select
+                            value={startTimeMax}
+                            onChange={(e) => setStartTimeMax(e.target.value)}
+                            className="time-select"
+                          >
+                            <option value="23:59:59">End of Day</option>
+                            <option value="12:00:00">Before 12:00 PM</option>
+                            <option value="15:00:00">Before 3:00 PM</option>
+                            <option value="17:00:00">Before 5:00 PM</option>
+                            <option value="19:00:00">Before 7:00 PM</option>
+                            <option value="21:00:00">Before 9:00 PM</option>
+                            <option value="22:00:00">Before 10:00 PM</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {verificationError && (
+                        <div className="modal-error-box" style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <AlertTriangle size={16} />
+                          <span>{verificationError}</span>
+                        </div>
+                      )}
+
+                      <button type="submit" disabled={sendingCode} className="submit-btn">
+                        {sendingCode ? 'Sending verification code...' : 'Send Verification Code'}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="modal-title">🔐 Verify Your Email</h2>
+                    <form onSubmit={handleVerifyCodeSubmit}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ marginBottom: '8px' }}>
+                          We sent a 6-digit verification code to:
+                          <strong style={{ display: 'block', color: 'var(--text-primary)', marginTop: '4px' }}>{email}</strong>
                         </label>
-                      ))}
-                    </div>
-                  </div>
+                        <input
+                          type="text"
+                          required
+                          maxLength={6}
+                          placeholder="e.g. 123456"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          className="form-input"
+                          style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
+                        />
+                      </div>
 
-                  {/* Weekdays */}
-                  <div className="form-group">
-                    <label className="form-label">Weekdays</label>
-                    <div className="checkbox-grid">
-                      {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
-                        const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
-                        return (
-                          <label key={dayAbbr} className="checkbox-label">
-                            <input
-                              type="checkbox"
-                              checked={modalDays.includes(fullName)}
-                              onChange={() => handleModalDayToggle(fullName)}
-                            />
-                            <span className="checkbox-custom">
-                              {modalDays.includes(fullName) && <CheckCircle size={14} />}
-                            </span>
-                            <span>{dayAbbr}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
+                      {verificationError && (
+                        <div className="modal-error-box" style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <AlertTriangle size={16} />
+                          <span>{verificationError}</span>
+                        </div>
+                      )}
 
-                  {/* Time Range */}
-                  <div className="form-group">
-                    <label className="form-label">Preferred Time Range</label>
-                    <div className="time-range-group">
-                      <select
-                        value={startTimeMin}
-                        onChange={(e) => setStartTimeMin(e.target.value)}
-                        className="time-select"
+                      <button type="submit" disabled={submitting} className="submit-btn" style={{ marginBottom: '15px' }}>
+                        {submitting ? 'Verifying...' : 'Verify & Subscribe'}
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setVerificationStep(1)} 
+                        className="back-to-step1-btn"
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', cursor: 'pointer', fontSize: '14px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}
                       >
-                        <option value="00:00:00">Any Time</option>
-                        <option value="06:00:00">After 6:00 AM</option>
-                        <option value="09:00:00">After 9:00 AM</option>
-                        <option value="12:00:00">After 12:00 PM</option>
-                        <option value="15:00:00">After 3:00 PM</option>
-                        <option value="17:00:00">After 5:00 PM</option>
-                        <option value="18:00:00">After 6:00 PM</option>
-                        <option value="19:00:00">After 7:00 PM</option>
-                      </select>
-                      <span style={{ color: 'var(--text-secondary)' }}>to</span>
-                      <select
-                        value={startTimeMax}
-                        onChange={(e) => setStartTimeMax(e.target.value)}
-                        className="time-select"
-                      >
-                        <option value="23:59:59">End of Day</option>
-                        <option value="12:00:00">Before 12:00 PM</option>
-                        <option value="15:00:00">Before 3:00 PM</option>
-                        <option value="17:00:00">Before 5:00 PM</option>
-                        <option value="19:00:00">Before 7:00 PM</option>
-                        <option value="21:00:00">Before 9:00 PM</option>
-                        <option value="22:00:00">Before 10:00 PM</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <button type="submit" disabled={submitting} className="submit-btn">
-                    {submitting ? 'Creating alert...' : 'Confirm Subscription'}
-                  </button>
-                </form>
+                        Change email or subscription settings
+                      </button>
+                    </form>
+                  </>
+                )}
               </>
             ) : (
               <div className="success-state">
                 <CheckCircle className="success-icon" size={64} />
-                <h2 className="modal-title" style={{ marginBottom: '8px' }}>Subscription Successful!</h2>
+                <h2 className="modal-title" style={{ marginBottom: '8px' }}>Subscription Verified!</h2>
                 <p className="success-desc">
-                  We are now monitoring these court times for you. As soon as a court slot matches your criteria and someone cancels, we'll email you at:
+                  Your email has been verified. We are now monitoring court times for you. As soon as a court slot matches your criteria, we will email you at:
                   <br />
                   <strong style={{ color: 'var(--accent-neon)', display: 'block', marginTop: '8px' }}>{email}</strong>
                 </p>
                 <button onClick={() => setIsModalOpen(false)} className="submit-btn" style={{ marginTop: '20px' }}>
-                  Great, Thanks!
+                  Awesome, Thanks!
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
+
 
       {/* Toast Notification */}
       {toastMessage && (
