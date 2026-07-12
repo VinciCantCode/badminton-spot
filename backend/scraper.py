@@ -106,7 +106,7 @@ def send_email_notification(config, new_slots):
         print("Error: Missing email settings in config.json.", file=sys.stderr)
         return False
 
-    subject = "【NVRC 羽毛球场预订提醒】发现新的空余场次！"
+    subject = "[BadmintonSpot] New Court Availability Detected!"
 
     # Create HTML table for slots
     table_rows = ""
@@ -125,16 +125,16 @@ def send_email_notification(config, new_slots):
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-        <h3 style="color: #2e7d32;">🏸 系统监测到有符合条件的羽毛球场次开放预订或有人退订：</h3>
+        <h3 style="color: #2e7d32;">🏸 System detected available court slots matching your criteria:</h3>
         <table style="border-collapse:collapse; width:100%; font-family:sans-serif; border: 1px solid #ddd;">
             <thead>
                 <tr style="background-color:#f2f2f2;">
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">日期</th>
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">时间</th>
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">场馆位置</th>
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">活动名称</th>
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">空余状态</th>
-                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">价格</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Date</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Time</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Location</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Activity</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Availability</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:left;">Price</th>
                 </tr>
             </thead>
             <tbody>
@@ -142,8 +142,8 @@ def send_email_notification(config, new_slots):
             </tbody>
         </table>
         <br/>
-        <p>预订链接：<a href="{BOOKING_PAGE_URL}" style="color: #1a73e8; font-weight: bold; text-decoration: none;">直接前往 NVRC PerfectMind 预订网页</a></p>
-        <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">此邮件由羽毛球监控爬虫自动发送，请勿直接回复。</p>
+        <p>Booking link: <a href="{BOOKING_PAGE_URL}" style="color: #1a73e8; font-weight: bold; text-decoration: none;">Book Now on NVRC PerfectMind</a></p>
+        <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">This is an automated notification from BadmintonSpot. Please do not reply to this email.</p>
     </body>
     </html>
     """
