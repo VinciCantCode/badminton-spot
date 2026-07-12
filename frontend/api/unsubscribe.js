@@ -6,11 +6,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email } = req.body;
+  const { email, token } = req.body;
 
   // Simple validation
-  if (!email) {
-    return res.status(400).json({ error: 'Email address is required to unsubscribe' });
+  if (!email || !token) {
+    return res.status(400).json({ error: 'Email address and verification token are required' });
   }
 
   try {
@@ -20,16 +20,21 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Delete official subscriptions for this email
+    // Delete official subscriptions for this email that match the security token
     // This will trigger database cascade delete to clean up alert_history automatically
-    const { error: subError } = await supabase
+    const { error: subError, count } = await supabase
       .from('subscriptions')
-      .delete()
-      .eq('email', email);
+      .delete({ count: 'exact' })
+      .eq('email', email)
+      .eq('unsubscribe_token', token);
 
     if (subError) {
       console.error('Database error during unsubscribe:', subError);
       return res.status(500).json({ error: 'Failed to process unsubscribe request' });
+    }
+
+    if (count === 0) {
+      return res.status(400).json({ error: 'Invalid unsubscribe token or email address' });
     }
 
     // Clean up any pending verification records for this email

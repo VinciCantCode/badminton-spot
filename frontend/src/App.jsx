@@ -98,6 +98,10 @@ function App() {
     const params = new URLSearchParams(window.location.search)
     return params.get('unsubscribe')
   })
+  const [unsubscribeToken, setUnsubscribeToken] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('token')
+  })
   const [unsubscribing, setUnsubscribing] = useState(false)
   const [unsubscribeSuccess, setUnsubscribeSuccess] = useState(false)
   const [unsubscribeError, setUnsubscribeError] = useState('')
@@ -328,13 +332,17 @@ function App() {
 
   // Handle Unsubscribe Action
   const handleConfirmUnsubscribe = async () => {
+    if (!unsubscribeToken) {
+      setUnsubscribeError('Security token is missing. Cannot verify request.')
+      return
+    }
     setUnsubscribing(true)
     setUnsubscribeError('')
     try {
       const response = await fetch('/api/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: unsubscribeEmail })
+        body: JSON.stringify({ email: unsubscribeEmail, token: unsubscribeToken })
       })
 
       const result = await response.json()
@@ -386,6 +394,7 @@ function App() {
               <button 
                 onClick={() => {
                   setUnsubscribeEmail(null)
+                  setUnsubscribeToken(null)
                   window.history.pushState({}, '', '/')
                 }}
                 className="back-to-step1-btn"
@@ -405,6 +414,7 @@ function App() {
               <button 
                 onClick={() => {
                   setUnsubscribeEmail(null)
+                  setUnsubscribeToken(null)
                   window.history.pushState({}, '', '/')
                 }}
                 className="submit-btn"

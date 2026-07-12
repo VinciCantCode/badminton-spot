@@ -101,6 +101,7 @@ def send_email_notification(config, new_slots):
     receiver = config.get("receiver_email")
     server_addr = config.get("smtp_server", "smtp.gmail.com")
     port = config.get("smtp_port", 587)
+    token = config.get("unsubscribe_token")
 
     if not sender or not password or not receiver:
         print("Error: Missing email settings in config.json.", file=sys.stderr)
@@ -121,6 +122,10 @@ def send_email_notification(config, new_slots):
             <td style="border:1px solid #ddd; padding:8px;">{slot[5]}</td>
         </tr>
         """
+
+    unsubscribe_footer = ""
+    if token:
+        unsubscribe_footer = f'<br/>Want to stop receiving alerts? <a href="https://badminton-spot.vercel.app/?unsubscribe={receiver}&token={token}" style="color: #ef4444; text-decoration: underline;">Unsubscribe here</a>.'
 
     html = f"""
     <html>
@@ -144,8 +149,7 @@ def send_email_notification(config, new_slots):
         <br/>
         <p>Booking link: <a href="{BOOKING_PAGE_URL}" style="color: #1a73e8; font-weight: bold; text-decoration: none;">Book Now on NVRC PerfectMind</a></p>
         <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-            This is an automated notification from BadmintonSpot. Please do not reply to this email.<br/>
-            Want to stop receiving alerts? <a href="https://badminton-spot.vercel.app/?unsubscribe={receiver}" style="color: #ef4444; text-decoration: underline;">Unsubscribe here</a>.
+            This is an automated notification from BadmintonSpot. Please do not reply to this email.{unsubscribe_footer}
         </p>
     </body>
     </html>
@@ -604,11 +608,12 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
         print(tabulate(formatted_table, headers=headers, tablefmt="grid"))
 
     # 5. Perform matchmaking and build email alerts grouped by receiver email
-    email_alerts = {} # map: email -> list of matched slot payloads
+    email_alerts = {} # map: email -> { "slots": list, "token": str }
     
     for sub in subscriptions:
         sub_id = sub.get("id")
         sub_email = sub.get("email")
+        sub_token = sub.get("unsubscribe_token", "")
         pref_locations = sub.get("locations", [])
         pref_weekdays = sub.get("weekdays", [])
         start_min = sub.get("start_time_min", "00:00:00")
@@ -642,16 +647,23 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
             if try_log_alert_history(supabase_url, supabase_key, sub_id, slot["event_id"], slot["spots_count"]):
                 # Succeeded! This is a new alert.
                 if sub_email not in email_alerts:
-                    email_alerts[sub_email] = []
-                email_alerts[sub_email].append(slot)
+                    email_alerts[sub_email] = {
+                        "slots": [],
+                        "token": sub_token
+                    }
+                email_alerts[sub_email]["slots"].append(slot)
 
     # 6. Send batched emails
     if email_alerts:
         print(f"Detected matched alerts for {len(email_alerts)} user(s). Sending emails...")
-        for recipient_email, matched_slots in email_alerts.items():
+        for recipient_email, data in email_alerts.items():
+            matched_slots = data["slots"]
+            unsub_token = data["token"]
+            
             # Customize the receiver_email in config dynamically for sending
             user_config = config.copy()
             user_config["receiver_email"] = recipient_email
+            user_config["unsubscribe_token"] = unsub_token
             
             # Format slots for the existing HTML template
             # Table columns expected by send_email_notification:
