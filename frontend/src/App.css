@@ -311,11 +311,11 @@
 }
 
 .filter-pill-small.active {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
+  background: var(--accent-neon);
+  border-color: var(--accent-neon);
   color: #0b0f19;
   font-weight: 700;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.4);
 }
 
 /* Search input container */
@@ -1000,6 +1000,120 @@ input[type="checkbox"]:checked + .checkbox-custom {
   color: var(--text-muted);
   font-weight: 500;
   font-size: 14px;
+}
+
+/* Custom Locationpicker Component Styling */
+.custom-locationpicker-container {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+}
+
+.custom-locationpicker-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(11, 15, 25, 0.6) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 240px;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: var(--transition-smooth);
+}
+
+.custom-locationpicker-input:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.locationpicker-placeholder {
+  color: var(--text-muted);
+}
+
+.locationpicker-value {
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.locationpicker-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* Dropdown Card */
+.custom-locationpicker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 240px;
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.locationpicker-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.locationpicker-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition-smooth);
+}
+
+.locationpicker-option-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.locationpicker-option-item.selected {
+  background: var(--accent-neon) !important;
+  color: #090d16 !important;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.4);
+}
+
+.checkbox-custom-indicator {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+.locationpicker-option-item.selected .checkbox-custom-indicator {
+  border-color: #090d16;
+  background: #090d16;
+  color: var(--accent-neon);
 }
 
 /* Responsive Scaling */

@@ -8,6 +8,7 @@ import {
   Bell,
   X,
   CheckCircle,
+  Check,
   RefreshCw,
   AlertTriangle,
   ExternalLink,
@@ -190,6 +191,81 @@ const CustomDatePicker = ({ value, onChange, placeholder }) => {
   )
 }
 
+// Custom Premium Multi-Select Location Picker component matching dark glassmorphism theme
+const CustomLocationPicker = ({ selected, onChange, options, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleToggleOption = (optId, e) => {
+    e.stopPropagation()
+    if (selected.includes(optId)) {
+      onChange(selected.filter(item => item !== optId))
+    } else {
+      onChange([...selected, optId])
+    }
+  }
+
+  const formatDisplayValue = () => {
+    if (selected.length === 0) return placeholder || "All Locations"
+    return selected.join(", ")
+  }
+
+  return (
+    <div className="custom-locationpicker-container" ref={containerRef}>
+      <div 
+        className="custom-locationpicker-input glass-panel" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className={selected.length > 0 ? "locationpicker-value" : "locationpicker-placeholder"}>
+          {formatDisplayValue()}
+        </span>
+        <ChevronDown size={14} className="locationpicker-icon" />
+      </div>
+
+      {isOpen && (
+        <div className="custom-locationpicker-dropdown glass-panel">
+          <div className="locationpicker-options-list">
+            <div 
+              className={`locationpicker-option-item ${selected.length === 0 ? "selected" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onChange([])
+              }}
+            >
+              <span>All Locations</span>
+            </div>
+            {options.map(opt => {
+              const isSelected = selected.includes(opt.id)
+              return (
+                <div 
+                  key={opt.id} 
+                  className={`locationpicker-option-item ${isSelected ? "selected" : ""}`}
+                  onClick={(e) => handleToggleOption(opt.id, e)}
+                >
+                  <span className="checkbox-custom-indicator">
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span>{opt.id}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function App() {
   // State
   const [slots, setSlots] = useState([])
@@ -197,7 +273,7 @@ function App() {
   const [error, setError] = useState(null)
   
   // Filtering States
-  const [selectedLocation, setSelectedLocation] = useState('All Locations')
+  const [selectedLocations, setSelectedLocations] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
@@ -312,10 +388,11 @@ function App() {
     }
 
     // 2. Location filter
-    if (selectedLocation !== 'All Locations') {
-      if (!slot.location_name.toLowerCase().includes(selectedLocation.toLowerCase())) {
-        return false
-      }
+    if (selectedLocations.length > 0) {
+      const match = selectedLocations.some(loc => 
+        slot.location_name.toLowerCase().includes(loc.toLowerCase())
+      )
+      if (!match) return false
     }
 
     // 3. Date Range filter
@@ -633,19 +710,12 @@ function App() {
             {/* Location Selector */}
             <div className="horizontal-filter-item">
               <span className="horizontal-filter-label">Locations</span>
-              <div className="select-wrapper">
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="dropdown-select"
-                >
-                  <option value="All Locations">All Locations</option>
-                  {LOCATIONS.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.id}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="dropdown-arrow" />
-              </div>
+              <CustomLocationPicker
+                selected={selectedLocations}
+                onChange={setSelectedLocations}
+                options={LOCATIONS}
+                placeholder="All Locations"
+              />
             </div>
 
             {/* Date Range Selector */}
