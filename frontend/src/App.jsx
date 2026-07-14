@@ -72,7 +72,8 @@ function App() {
   
   // Filtering States
   const [selectedLocation, setSelectedLocation] = useState('All Locations')
-  const [selectedDate, setSelectedDate] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [showAvailableOnly, setShowAvailableOnly] = useState(false)
@@ -133,6 +134,27 @@ function App() {
     }
   }
 
+  // Extract unique chronological dates from slots for the dropdown range selectors
+  const uniqueDates = React.useMemo(() => {
+    const dates = []
+    const seen = new Set()
+    slots.forEach(slot => {
+      if (slot.date_desc && !seen.has(slot.date_desc)) {
+        seen.add(slot.date_desc)
+        try {
+          const rawDateStr = new Date(slot.start_time).toISOString().split('T')[0]
+          dates.push({
+            label: slot.date_desc,
+            value: rawDateStr
+          })
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+    })
+    return dates
+  }, [slots])
+
   // Weekday filter toggle
   const toggleDayFilter = (dayAbbr) => {
     const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
@@ -170,9 +192,15 @@ function App() {
       }
     }
 
-    // 3. Date filter
-    if (selectedDate && slot.date_desc !== selectedDate) {
-      return false
+    // 3. Date Range filter
+    if (startDate || endDate) {
+      try {
+        const slotDateStr = new Date(slot.start_time).toISOString().split('T')[0]
+        if (startDate && slotDateStr < startDate) return false
+        if (endDate && slotDateStr > endDate) return false
+      } catch {
+        return false
+      }
     }
 
     // 4. Day filter
@@ -494,24 +522,55 @@ function App() {
               </div>
             </div>
 
-            {/* Date Selector */}
-            <div className="horizontal-filter-item">
-              <span className="horizontal-filter-label">Date</span>
-              <div className="select-wrapper">
-                <select
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="dropdown-select"
-                >
-                  <option value="">All Dates</option>
-                  {Array.from(new Set(slots.map(s => s.date_desc)))
-                    .filter(Boolean)
-                    .map(date => (
-                      <option key={date} value={date}>{date}</option>
-                    ))
-                  }
-                </select>
-                <ChevronDown size={14} className="dropdown-arrow" />
+            {/* Date Range Selector */}
+            <div className="horizontal-filter-item date-range-filter-item">
+              <div className="filter-label-row">
+                <span className="horizontal-filter-label">Date Range</span>
+                {(startDate || endDate) && (
+                  <button 
+                    onClick={() => { setStartDate(''); setEndDate(''); }} 
+                    className="filter-reset-link"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="date-range-inputs">
+                <div className="select-wrapper date-range-select">
+                  <select
+                    value={startDate}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setStartDate(val)
+                      if (endDate && val > endDate) setEndDate('')
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Start Date</option>
+                    {uniqueDates.map(date => (
+                      <option key={`start-${date.value}`} value={date.value}>{date.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="dropdown-arrow" />
+                </div>
+                <span className="date-range-separator">-</span>
+                <div className="select-wrapper date-range-select">
+                  <select
+                    value={endDate}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setEndDate(val)
+                      if (startDate && val < startDate) setStartDate('')
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">End Date</option>
+                    {uniqueDates.map(date => (
+                      <option key={`end-${date.value}`} value={date.value}>{date.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="dropdown-arrow" />
+                </div>
               </div>
             </div>
 
