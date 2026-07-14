@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import {
   Calendar,
@@ -62,6 +62,132 @@ const WEEKDAY_FULL_NAMES = {
   Fri: 'Friday',
   Sat: 'Saturday',
   Sun: 'Sunday'
+}
+
+// Custom Premium Date Picker component matching dark glassmorphism theme
+const CustomDatePicker = ({ value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+
+  const handlePrevMonth = (e) => {
+    e.stopPropagation()
+    setCurrentMonth(new Date(year, month - 1, 1))
+  }
+
+  const handleNextMonth = (e) => {
+    e.stopPropagation()
+    setCurrentMonth(new Date(year, month + 1, 1))
+  }
+
+  const handleDaySelect = (dayVal, e) => {
+    e.stopPropagation()
+    onChange(dayVal)
+    setIsOpen(false)
+  }
+
+  // Generate calendar days
+  const firstDayIndex = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const prevMonthDays = new Date(year, month, 0).getDate()
+
+  const cells = []
+  // Previous month filler days
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const d = prevMonthDays - i
+    const m = month === 0 ? 11 : month - 1
+    const y = month === 0 ? year - 1 : year
+    const formatted = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    cells.push({ day: d, value: formatted, isCurrentMonth: false })
+  }
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const formatted = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    cells.push({ day: d, value: formatted, isCurrentMonth: true })
+  }
+  // Next month filler days to complete 42 cells grid (6 rows * 7 columns)
+  const remaining = 42 - cells.length
+  for (let d = 1; d <= remaining; d++) {
+    const m = month === 11 ? 0 : month + 1
+    const y = month === 11 ? year + 1 : year
+    const formatted = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    cells.push({ day: d, value: formatted, isCurrentMonth: false })
+  }
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
+
+  // Prettier value format for display box
+  const formatDisplayValue = (val) => {
+    if (!val) return placeholder
+    const [y, m, d] = val.split('-')
+    const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+    return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  return (
+    <div className="custom-datepicker-container" ref={containerRef}>
+      <div 
+        className="custom-datepicker-input glass-panel" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className={value ? "datepicker-value" : "datepicker-placeholder"}>
+          {formatDisplayValue(value)}
+        </span>
+        <Calendar size={14} className="datepicker-icon" />
+      </div>
+
+      {isOpen && (
+        <div className="custom-datepicker-dropdown glass-panel">
+          <div className="datepicker-header">
+            <button className="datepicker-nav-btn" onClick={handlePrevMonth}>&lt;</button>
+            <span className="datepicker-month-title">{monthNames[month]} {year}</span>
+            <button className="datepicker-nav-btn" onClick={handleNextMonth}>&gt;</button>
+          </div>
+          
+          <div className="datepicker-weekdays">
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+          </div>
+
+          <div className="datepicker-days-grid">
+            {cells.map((cell, idx) => {
+              const isSelected = cell.value === value
+              const classes = [
+                "datepicker-day-cell",
+                cell.isCurrentMonth ? "current-month" : "other-month",
+                isSelected ? "selected" : ""
+              ].filter(Boolean).join(" ")
+
+              return (
+                <div 
+                  key={idx} 
+                  className={classes}
+                  onClick={(e) => handleDaySelect(cell.value, e)}
+                >
+                  {cell.day}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function App() {
@@ -536,41 +662,23 @@ function App() {
                 )}
               </div>
               <div className="date-range-inputs">
-                <div className="select-wrapper date-range-select">
-                  <select
-                    value={startDate}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setStartDate(val)
-                      if (endDate && val > endDate) setEndDate('')
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">Start Date</option>
-                    {uniqueDates.map(date => (
-                      <option key={`start-${date.value}`} value={date.value}>{date.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="dropdown-arrow" />
-                </div>
+                <CustomDatePicker
+                  value={startDate}
+                  onChange={(val) => {
+                    setStartDate(val)
+                    if (endDate && val > endDate) setEndDate('')
+                  }}
+                  placeholder="Start Date"
+                />
                 <span className="date-range-separator">-</span>
-                <div className="select-wrapper date-range-select">
-                  <select
-                    value={endDate}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setEndDate(val)
-                      if (startDate && val < startDate) setStartDate('')
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">End Date</option>
-                    {uniqueDates.map(date => (
-                      <option key={`end-${date.value}`} value={date.value}>{date.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="dropdown-arrow" />
-                </div>
+                <CustomDatePicker
+                  value={endDate}
+                  onChange={(val) => {
+                    setEndDate(val)
+                    if (startDate && val < startDate) setStartDate('')
+                  }}
+                  placeholder="End Date"
+                />
               </div>
             </div>
 
