@@ -2,7 +2,7 @@
 import argparse
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, tzinfo, timedelta
 import requests
 import json
 import time
@@ -379,6 +379,26 @@ def load_env_file():
             except Exception as e:
                 print(f"Warning: Error loading .env file from {p}: {e}", file=sys.stderr)
 
+class PacificTimezone(tzinfo):
+    def utcoffset(self, dt):
+        if dt is None:
+            return timedelta(hours=-8)
+        # DST in Canada: starts second Sunday of March, ends first Sunday of November.
+        # Simple approximation of DST (April to October is UTC-7, November to March is UTC-8).
+        if 3 < dt.month < 11:
+            return timedelta(hours=-7)
+        return timedelta(hours=-8)
+
+    def dst(self, dt):
+        if 3 < dt.month < 11:
+            return timedelta(hours=1)
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return "Pacific Time"
+
+vancouver_tz = PacificTimezone()
+
 def parse_to_iso_datetimes(date_desc, time_desc):
     """Parses date_desc and time_desc into ISO-8601 string representations for start_time and end_time.
     e.g. date_desc = "Fri, Jul 3rd, 2026", time_desc = "06:45 pm - 07:45 pm"
@@ -395,14 +415,11 @@ def parse_to_iso_datetimes(date_desc, time_desc):
         start_time_str = times[0]
         end_time_str = times[1] if len(times) > 1 else times[0]
 
-        # Use local timezone to generate timezone-aware ISO format
-        local_tz = datetime.now().astimezone().tzinfo
-
         start_dt_str = f"{date_part} {start_time_str}"
-        start_dt = datetime.strptime(start_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=local_tz)
+        start_dt = datetime.strptime(start_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=vancouver_tz)
         
         end_dt_str = f"{date_part} {end_time_str}"
-        end_dt = datetime.strptime(end_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=local_tz)
+        end_dt = datetime.strptime(end_dt_str, "%b %d, %Y %I:%M %p").replace(tzinfo=vancouver_tz)
 
         return start_dt.isoformat(), end_dt.isoformat()
     except Exception as e:

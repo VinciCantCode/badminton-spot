@@ -266,6 +266,72 @@ const CustomLocationPicker = ({ selected, onChange, options, placeholder }) => {
   )
 }
 
+// Generate time options from 12:00 AM to 11:30 PM in 30-minute intervals
+const TIME_OPTIONS = (() => {
+  const options = []
+  for (let h = 0; h < 24; h++) {
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const displayHour = h % 12 === 0 ? 12 : h % 12
+    const hourStr = String(displayHour).padStart(2, '0')
+    options.push(`${hourStr}:00 ${ampm}`)
+    options.push(`${hourStr}:30 ${ampm}`)
+  }
+  return options
+})()
+
+// Custom Premium Time Picker component matching dark glassmorphism theme
+const CustomTimePicker = ({ value, onChange, placeholder, options }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="custom-timepicker-container" ref={containerRef}>
+      <div 
+        className="custom-timepicker-input glass-panel" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className={value ? "timepicker-value" : "timepicker-placeholder"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown size={14} className="timepicker-icon" />
+      </div>
+
+      {isOpen && (
+        <div className="custom-timepicker-dropdown glass-panel">
+          <div className="timepicker-options-list">
+            {options.map(opt => {
+              const isSelected = opt === value
+              return (
+                <div 
+                  key={opt} 
+                  className={`timepicker-option-item ${isSelected ? "selected" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onChange(opt)
+                    setIsOpen(false)
+                  }}
+                >
+                  {opt}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function App() {
   // State
   const [slots, setSlots] = useState([])
@@ -276,9 +342,11 @@ function App() {
   const [selectedLocations, setSelectedLocations] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [showAvailableOnly, setShowAvailableOnly] = useState(false)
+  const [showAvailableOnly, setShowAvailableOnly] = useState(true)
   
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -336,6 +404,88 @@ function App() {
     }
   }
 
+  // Helper to convert UTC ISO-8601 string to Vancouver local date (YYYY-MM-DD)
+  const getVancouverDate = (isoStr) => {
+    if (!isoStr) return ''
+    try {
+      const date = new Date(isoStr)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Vancouver',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+      const parts = formatter.formatToParts(date)
+      const year = parts.find(p => p.type === 'year').value
+      const month = parts.find(p => p.type === 'month').value
+      const day = parts.find(p => p.type === 'day').value
+      return `${year}-${month}-${day}`
+    } catch {
+      return ''
+    }
+  }
+
+  // Helper to convert UTC ISO-8601 string to Vancouver local time (HH:MM)
+  const getVancouverTime = (isoStr) => {
+    if (!isoStr) return ''
+    try {
+      const date = new Date(isoStr)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Vancouver',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      const parts = formatter.formatToParts(date)
+      const hour = parts.find(p => p.type === 'hour').value
+      const minute = parts.find(p => p.type === 'minute').value
+      return `${hour}:${minute}`
+    } catch {
+      return ''
+    }
+  }
+
+  // Helper to format slot time range (start to end) in local Vancouver time (e.g. 11:15 am - 12:15 pm)
+  const formatTimeRange = (startIso, endIso) => {
+    if (!startIso || !endIso) return ''
+    try {
+      const start = new Date(startIso)
+      const end = new Date(endIso)
+      const formatTimePart = (date) => {
+        return date.toLocaleTimeString('en-US', {
+          timeZone: 'America/Vancouver',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }).toLowerCase()
+      }
+      return `${formatTimePart(start)} - ${formatTimePart(end)}`
+    } catch {
+      return ''
+    }
+  }
+
+  // Helper to convert time string (12-hour or HH:MM) to minutes since midnight
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return null
+    const match = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i)
+    if (match) {
+      let hours = parseInt(match[1])
+      const minutes = parseInt(match[2])
+      const ampm = match[3].toUpperCase()
+      if (ampm === 'PM' && hours !== 12) hours += 12
+      if (ampm === 'AM' && hours === 12) hours = 0
+      return hours * 60 + minutes
+    }
+    const parts = timeStr.split(':')
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0])
+      const minutes = parseInt(parts[1])
+      return hours * 60 + minutes
+    }
+    return null
+  }
+
   // Extract unique chronological dates from slots for the dropdown range selectors
   const uniqueDates = React.useMemo(() => {
     const dates = []
@@ -344,7 +494,7 @@ function App() {
       if (slot.date_desc && !seen.has(slot.date_desc)) {
         seen.add(slot.date_desc)
         try {
-          const rawDateStr = new Date(slot.start_time).toISOString().split('T')[0]
+          const rawDateStr = getVancouverDate(slot.start_time)
           dates.push({
             label: slot.date_desc,
             value: rawDateStr
@@ -398,11 +548,26 @@ function App() {
     // 3. Date Range filter
     if (startDate || endDate) {
       try {
-        const slotDateStr = new Date(slot.start_time).toISOString().split('T')[0]
+        const slotDateStr = getVancouverDate(slot.start_time)
         if (startDate && slotDateStr < startDate) return false
         if (endDate && slotDateStr > endDate) return false
       } catch {
         return false
+      }
+    }
+
+    // 3.5 Time Range filter
+    if (startTime || endTime) {
+      const slotStartMin = timeToMinutes(getVancouverTime(slot.start_time))
+      const slotEndMin = timeToMinutes(getVancouverTime(slot.end_time))
+      
+      if (startTime && slotStartMin !== null) {
+        const startMin = timeToMinutes(startTime)
+        if (startMin !== null && slotStartMin < startMin) return false
+      }
+      if (endTime && slotEndMin !== null) {
+        const endMin = timeToMinutes(endTime)
+        if (endMin !== null && slotEndMin > endMin) return false
       }
     }
 
@@ -752,6 +917,65 @@ function App() {
               </div>
             </div>
 
+            {/* Search Input */}
+            <div className="horizontal-filter-item">
+              <span className="horizontal-filter-label">&nbsp;</span>
+              <div className="search-input-container">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+
+            {/* Time Range Selector */}
+            <div className="horizontal-filter-item time-range-filter-item">
+              <div className="filter-label-row">
+                <span className="horizontal-filter-label">Time Range</span>
+                {(startTime || endTime) && (
+                  <button 
+                    onClick={() => { setStartTime(''); setEndTime(''); }} 
+                    className="filter-reset-link"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="time-range-inputs">
+                <CustomTimePicker
+                  value={startTime}
+                  onChange={(val) => {
+                    setStartTime(val)
+                    if (endTime) {
+                      const startMin = timeToMinutes(val)
+                      const endMin = timeToMinutes(endTime)
+                      if (startMin !== null && endMin !== null && startMin > endMin) setEndTime('')
+                    }
+                  }}
+                  placeholder="Start Time"
+                  options={TIME_OPTIONS}
+                />
+                <span className="time-range-separator">-</span>
+                <CustomTimePicker
+                  value={endTime}
+                  onChange={(val) => {
+                    setEndTime(val)
+                    if (startTime) {
+                      const startMin = timeToMinutes(startTime)
+                      const endMin = timeToMinutes(val)
+                      if (startMin !== null && endMin !== null && startMin > endMin) setStartTime('')
+                    }
+                  }}
+                  placeholder="End Time"
+                  options={TIME_OPTIONS}
+                />
+              </div>
+            </div>
+
             {/* Weekdays pills */}
             <div className="horizontal-filter-item flex-grow">
               <span className="horizontal-filter-label">Weekdays</span>
@@ -769,21 +993,6 @@ function App() {
                     </button>
                   )
                 })}
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div className="horizontal-filter-item">
-              <span className="horizontal-filter-label">&nbsp;</span>
-              <div className="search-input-container">
-                <Search size={16} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
               </div>
             </div>
           </section>
@@ -829,7 +1038,7 @@ function App() {
                   const isFull = slot.spots_count === 0
                   // Parse date to prettier format
                   const rawDate = slot.date_desc || ''
-                  const timeRange = slot.time_desc || ''
+                  const timeRange = formatTimeRange(slot.start_time, slot.end_time)
 
                   return (
                     <div key={slot.event_id} className="slot-card glass-panel">
