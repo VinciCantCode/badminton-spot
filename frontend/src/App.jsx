@@ -171,13 +171,8 @@ function App() {
     }
 
     // 3. Date filter
-    if (selectedDate) {
-      try {
-        const slotDate = new Date(slot.start_time).toISOString().split('T')[0]
-        if (slotDate !== selectedDate) return false
-      } catch {
-        return false
-      }
+    if (selectedDate && slot.date_desc !== selectedDate) {
+      return false
     }
 
     // 4. Day filter
@@ -499,15 +494,25 @@ function App() {
               </div>
             </div>
 
-            {/* Date Picker */}
+            {/* Date Selector */}
             <div className="horizontal-filter-item">
               <span className="horizontal-filter-label">Date</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="date-input"
-              />
+              <div className="select-wrapper">
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="dropdown-select"
+                >
+                  <option value="">All Dates</option>
+                  {Array.from(new Set(slots.map(s => s.date_desc)))
+                    .filter(Boolean)
+                    .map(date => (
+                      <option key={date} value={date}>{date}</option>
+                    ))
+                  }
+                </select>
+                <ChevronDown size={14} className="dropdown-arrow" />
+              </div>
             </div>
 
             {/* Weekdays pills */}
