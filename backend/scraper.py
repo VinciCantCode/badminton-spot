@@ -2,7 +2,7 @@
 import argparse
 import re
 import sys
-from datetime import datetime, tzinfo, timedelta
+from datetime import datetime, tzinfo, timedelta, timezone
 import requests
 import json
 import time
@@ -259,8 +259,9 @@ def is_past_slot(date_desc, start_time_str):
             date_part = cleaned_date.strip()
             
         datetime_str = f"{date_part} {start_time_str}"
-        slot_datetime = datetime.strptime(datetime_str, "%b %d, %Y %I:%M %p")
-        return slot_datetime < datetime.now()
+        slot_datetime = datetime.strptime(datetime_str, "%b %d, %Y %I:%M %p").replace(tzinfo=vancouver_tz)
+        now_vancouver = datetime.now(vancouver_tz)
+        return slot_datetime < now_vancouver
     except Exception:
         return False
 
@@ -476,6 +477,26 @@ def upsert_slots_to_supabase(supabase_url, supabase_key, slots):
         if hasattr(e, 'response') and e.response is not None:
             print(f"Response details: {e.response.text}", file=sys.stderr)
 
+def purge_expired_slots_from_supabase(supabase_url, supabase_key):
+    """Deletes slots from Supabase 'slots' table where end_time has passed relative to current time."""
+    if not supabase_url or not supabase_key:
+        return
+    url = f"{supabase_url}/rest/v1/slots"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json"
+    }
+    try:
+        delete_url = f"{url}?end_time=lt.{now_iso}"
+        response = requests.delete(delete_url, headers=headers, timeout=15)
+        response.raise_for_status()
+        print("Successfully purged expired slots from Supabase database.")
+    except Exception as e:
+        print(f"Error purging expired slots from Supabase: {e}", file=sys.stderr)
+
+
 def try_log_alert_history(supabase_url, supabase_key, subscription_id, event_id, spots_count):
     """Tries to log a sent notification in Supabase 'alert_history'.
     Returns True if the insert succeeded (meaning it's a new alert).
@@ -603,9 +624,12 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
         if spots_count > 0:
             available_slots.append(slot_payload)
 
-    # 4. Upsert all slots into Supabase (so dashboard is updated)
-    if all_slots_payload:
-        upsert_slots_to_supabase(supabase_url, supabase_key, all_slots_payload)
+    # 4. Upsert all slots into Supabase and purge expired ones
+    if supabase_url and supabase_key:
+        if all_slots_payload:
+            upsert_slots_to_supabase(supabase_url, supabase_key, all_slots_payload)
+        purge_expired_slots_from_supabase(supabase_url, supabase_key)
+
         
         # Also print to stdout for monitoring visibility
         headers = ["Date", "Time", "Location", "Event Name", "Status", "Price", "Action Button"]

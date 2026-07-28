@@ -530,8 +530,25 @@ function App() {
     return ''
   }
 
+  // Helper to check if a slot's end time has passed relative to current time
+  const isSlotExpired = (endIsoStr) => {
+    if (!endIsoStr) return false
+    try {
+      const endTime = new Date(endIsoStr).getTime()
+      const now = new Date().getTime()
+      return endTime < now
+    } catch {
+      return false
+    }
+  }
+
   // Filter slots
   const filteredSlots = slots.filter(slot => {
+    // 0. Expired slots filter (hide slots that have already passed)
+    if (isSlotExpired(slot.end_time || slot.start_time)) {
+      return false
+    }
+
     // 1. Availability filter (if checked, hide full slots)
     if (showAvailableOnly && slot.spots_count === 0) {
       return false
