@@ -37,7 +37,34 @@ export default async function handler(req, res) {
     }
   }
 
+  // POST: Create a new subscription record for the authenticated user without OTP
+  if (req.method === 'POST') {
+    const { locations, weekdays, start_time_min, start_time_max } = req.body || {};
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .insert({
+          email: userEmail,
+          locations: Array.isArray(locations) && locations.length > 0 ? locations : ['Delbrook', 'Lions Gate', 'Parkgate', 'John Braithwaite', 'Lynn Creek'],
+          weekdays: Array.isArray(weekdays) && weekdays.length > 0 ? weekdays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+          start_time_min: start_time_min || '00:00:00',
+          start_time_max: start_time_max || '23:59:59',
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(201).json({ success: true, subscription: data });
+    } catch (err) {
+      console.error('Error creating user subscription:', err);
+      return res.status(500).json({ error: 'Failed to create subscription' });
+    }
+  }
+
   // PUT: Update a specific subscription record
+
   if (req.method === 'PUT') {
     const { id, locations, weekdays, start_time_min, start_time_max, is_active } = req.body;
     if (!id) {

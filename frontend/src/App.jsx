@@ -408,7 +408,57 @@ function App() {
   const [editMinTime, setEditMinTime] = useState('00:00:00')
   const [editMaxTime, setEditMaxTime] = useState('23:59:59')
 
+  // Create New Subscription Rule State (within Management Dashboard)
+  const [addingNewRule, setAddingNewRule] = useState(false)
+  const [newLocations, setNewLocations] = useState([])
+  const [newDays, setNewDays] = useState([])
+  const [newMinTime, setNewMinTime] = useState('00:00:00')
+  const [newMaxTime, setNewMaxTime] = useState('23:59:59')
+
+  const handleStartAddNewRule = () => {
+    setAddingNewRule(true)
+    setEditingSub(null)
+    setNewLocations(LOCATIONS.map(l => l.id))
+    setNewDays(Object.values(WEEKDAY_FULL_NAMES))
+    setNewMinTime('00:00:00')
+    setNewMaxTime('23:59:59')
+  }
+
+  const handleCreateNewRuleSubmit = async (e) => {
+    e.preventDefault()
+
+    try {
+      const response = await fetch('/api/user/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          locations: newLocations.length > 0 ? newLocations : LOCATIONS.map(l => l.id),
+          weekdays: newDays.length > 0 ? newDays : Object.values(WEEKDAY_FULL_NAMES),
+          start_time_min: newMinTime,
+          start_time_max: newMaxTime
+        })
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) throw new Error('API server unreachable.')
+      }
+      if (!response.ok) throw new Error(res.error || 'Failed to create subscription rule')
+
+      setUserSubscriptions(prev => [res.subscription, ...prev])
+      setAddingNewRule(false)
+      showToast('New alert rule created successfully!')
+    } catch (err) {
+      alert(err.message || 'Error creating subscription rule.')
+    }
+  }
+
   // Helper to fetch user's active subscriptions from serverless API
+
   const fetchUserSubscriptions = async (tokenOverride) => {
     const tokenToUse = tokenOverride || sessionToken
     if (!tokenToUse) return
@@ -1659,7 +1709,88 @@ function App() {
                   </button>
                 </div>
 
-                {editingSub ? (
+                {addingNewRule ? (
+                  // Add New Rule Form (Authenticated)
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Plus size={18} style={{ color: 'var(--accent-neon)' }} />
+                      <span>Add New Alert Subscription Rule</span>
+                    </h3>
+
+                    <form onSubmit={handleCreateNewRuleSubmit}>
+                      {/* Locations */}
+                      <div className="form-group">
+                        <label className="form-label">Filtered Locations</label>
+                        <div className="checkbox-grid">
+                          {LOCATIONS.map(loc => (
+                            <label key={loc.id} className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={newLocations.includes(loc.id)}
+                                onChange={() => setNewLocations(prev => prev.includes(loc.id) ? prev.filter(i => i !== loc.id) : [...prev, loc.id])}
+                              />
+                              <span className="checkbox-custom">
+                                {newLocations.includes(loc.id) && <CheckCircle size={14} />}
+                              </span>
+                              <span>{loc.id}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Weekdays */}
+                      <div className="form-group">
+                        <label className="form-label">Filtered Weekdays</label>
+                        <div className="checkbox-grid">
+                          {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
+                            const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
+                            return (
+                              <label key={dayAbbr} className="checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={newDays.includes(fullName)}
+                                  onChange={() => setNewDays(prev => prev.includes(fullName) ? prev.filter(d => d !== fullName) : [...prev, fullName])}
+                                />
+                                <span className="checkbox-custom">
+                                  {newDays.includes(fullName) && <CheckCircle size={14} />}
+                                </span>
+                                <span>{dayAbbr}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Time Range */}
+                      <div className="form-group">
+                        <label className="form-label">Preferred Time Range</label>
+                        <div className="time-range-group">
+                          <select value={newMinTime} onChange={(e) => setNewMinTime(e.target.value)} className="time-select">
+                            <option value="00:00:00">Any Time</option>
+                            <option value="12:00:00">After 12:00 PM</option>
+                            <option value="17:00:00">After 5:00 PM (After Work)</option>
+                            <option value="18:00:00">After 6:00 PM</option>
+                            <option value="19:00:00">After 7:00 PM</option>
+                          </select>
+                          <span style={{ color: 'var(--text-secondary)' }}>to</span>
+                          <select value={newMaxTime} onChange={(e) => setNewMaxTime(e.target.value)} className="time-select">
+                            <option value="23:59:59">End of Day</option>
+                            <option value="12:00:00">Before 12:00 PM</option>
+                            <option value="15:00:00">Before 3:00 PM</option>
+                            <option value="17:00:00">Before 5:00 PM</option>
+                            <option value="19:00:00">Before 7:00 PM</option>
+                            <option value="21:00:00">Before 9:00 PM</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <button type="submit" className="submit-btn" style={{ flex: 1 }}>Save New Rule</button>
+                        <button type="button" onClick={() => setAddingNewRule(false)} className="submit-btn" style={{ flex: 1, background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)' }}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : editingSub ? (
                   // Edit Criteria Form
                   <div>
                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1803,10 +1934,7 @@ function App() {
                     )}
 
                     <button 
-                      onClick={() => {
-                        setIsManageModalOpen(false)
-                        handleNewAlertClick()
-                      }} 
+                      onClick={handleStartAddNewRule} 
                       className="add-alert-rule-btn"
                     >
                       <Plus size={16} />
