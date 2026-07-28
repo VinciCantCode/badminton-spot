@@ -801,7 +801,7 @@ function App() {
   }
 
   // Conditional Rendering for Unsubscribe View
-  if (unsubscribeEmail) {
+  if (unsubscribeToken) {
     return (
       <div className="unsubscribe-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.15), rgba(11, 15, 25, 0.45)), url("/bg-court.jpg") no-repeat 25% 90% fixed', backgroundSize: 'cover', padding: '20px' }}>
         <div className="unsubscribe-card glass-panel" style={{ maxWidth: '480px', width: '100%', padding: '40px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', textAlign: 'center' }}>
@@ -811,8 +811,7 @@ function App() {
             <>
               <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px' }}>Cancel Court Alerts</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', marginBottom: '25px' }}>
-                Are you sure you want to stop receiving all live badminton court alerts for:
-                <strong style={{ display: 'block', color: 'var(--accent-neon)', fontSize: '18px', marginTop: '10px', wordBreak: 'break-all' }}>{unsubscribeEmail}</strong>
+                Are you sure you want to stop receiving live badminton court availability alerts?
               </p>
 
               {unsubscribeError && (
@@ -833,7 +832,6 @@ function App() {
 
               <button 
                 onClick={() => {
-                  setUnsubscribeEmail(null)
                   setUnsubscribeToken(null)
                   window.history.pushState({}, '', '/')
                 }}
@@ -848,12 +846,10 @@ function App() {
               <CheckCircle size={64} style={{ color: 'var(--accent-neon)', margin: '0 auto 20px' }} />
               <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px' }}>Unsubscribed Successfully</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>
-                You have been removed from all monitoring lists. You will no longer receive any alert emails at:
-                <strong style={{ display: 'block', color: 'var(--text-primary)', marginTop: '8px', wordBreak: 'break-all' }}>{unsubscribeEmail}</strong>
+                You have been removed from all monitoring lists and will no longer receive alert emails.
               </p>
               <button 
                 onClick={() => {
-                  setUnsubscribeEmail(null)
                   setUnsubscribeToken(null)
                   window.history.pushState({}, '', '/')
                 }}
