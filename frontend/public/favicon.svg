@@ -1,23 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Dark Theme Background matching BadmintonSpot (#0b0f19) -->
-  <rect width="100" height="100" rx="22" fill="#0b0f19"/>
-
-  <!-- Minimalist High-Contrast Neon Shuttlecock Emblem -->
-  <g transform="translate(50, 52) rotate(-12) translate(-50, -52)">
-    <!-- Feather Fan Base -->
-    <path d="M 50 26 L 22 72 Q 50 78 78 72 Z" fill="#a3e635"/>
-
-    <!-- Feather Separations (Dark Contrast Cuts) -->
-    <line x1="50" y1="26" x2="31" y2="73" stroke="#0b0f19" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="50" y1="26" x2="50" y2="75" stroke="#0b0f19" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="50" y1="26" x2="69" y2="73" stroke="#0b0f19" stroke-width="3.5" stroke-linecap="round"/>
-
-    <!-- Horizontal Stitch Bands -->
-    <path d="M 33 52 Q 50 47 67 52" fill="none" stroke="#0b0f19" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M 27 63 Q 50 58 73 63" fill="none" stroke="#0b0f19" stroke-width="3.5" stroke-linecap="round"/>
-
-    <!-- Bright Neon Yellow Cork Head -->
-    <path d="M 38 27 C 38 15, 62 15, 62 27 Z" fill="#e4f9a0"/>
-    <circle cx="50" cy="22" r="10" fill="#a3e635"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#a3e635" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Rotated so feather opening points towards top-left, identical to website logo icon -->
+  <g transform="rotate(-135 12 12)">
+    <!-- Cork base -->
+    <path d="M12 20c1.657 0 3-1.343 3-3H9c0 1.657 1.343 3 3 3z" fill="#a3e635" stroke="#a3e635" />
+    <!-- Feather cage -->
+    <path d="M9 17L5 5h14l-4 12" stroke="#a3e635" />
+    <!-- Inside feathers ribs -->
+    <path d="M12 17V5" stroke="#a3e635" />
+    <path d="M10.5 17l-2.5-12" stroke="#a3e635" />
+    <path d="M13.5 17l2.5-12" stroke="#a3e635" />
+    <!-- Rib band -->
+    <path d="M7.5 11h9" stroke="#a3e635" />
+    <path d="M6.5 8h11" stroke="#a3e635" />
   </g>
 </svg>
