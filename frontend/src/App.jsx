@@ -1609,10 +1609,6 @@ function App() {
       {isManageModalOpen && (
         <div className="modal-overlay" onClick={() => { setIsManageModalOpen(false); setEditingSub(null); }}>
           <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px', width: '92%' }}>
-            <button className="close-btn" onClick={() => { setIsManageModalOpen(false); setEditingSub(null); }}>
-              <X size={24} />
-            </button>
-
             {!sessionToken ? (
               // Login / Verify OTP View for Manager
               <>
