@@ -1700,6 +1700,7 @@ function App() {
               <>
                 <div className="user-badge-bar">
                   <div className="user-badge-email">
+                    <span className="user-badge-pulse"></span>
                     <ShieldCheck size={18} />
                     <span>{userEmail || 'Active Session'}</span>
                   </div>
@@ -1890,14 +1891,14 @@ function App() {
                         <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>You haven't set up any active court alerts for this email yet.</p>
                       </div>
                     ) : (
-                      userSubscriptions.map(sub => (
+                      userSubscriptions.map((sub, idx) => (
                         <div key={sub.id} className="sub-card">
                           <div className="sub-card-header">
                             <div className="sub-card-title">
                               <Bell size={16} style={{ color: 'var(--accent-neon)' }} />
-                              <span>Badminton Alert Rule</span>
+                              <span>Rule #{idx + 1}</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                            <span className="sub-card-badge">
                               Created {new Date(sub.created_at).toLocaleDateString()}
                             </span>
                           </div>
@@ -1914,7 +1915,7 @@ function App() {
                             ))}
 
                             {/* Time range */}
-                            <span className="sub-chip">
+                            <span className="sub-chip time">
                               🕒 {sub.start_time_min === '00:00:00' && sub.start_time_max === '23:59:59' ? 'Any Time' : `${sub.start_time_min.slice(0, 5)} - ${sub.start_time_max.slice(0, 5)}`}
                             </span>
                           </div>
