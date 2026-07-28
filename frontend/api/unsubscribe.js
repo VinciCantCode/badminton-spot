@@ -6,11 +6,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email, token } = req.body;
+  const { token } = req.body;
 
   // Simple validation
-  if (!email || !token) {
-    return res.status(400).json({ error: 'Email address and verification token are required' });
+  if (!token) {
+    return res.status(400).json({ error: 'Verification token is required' });
   }
 
   try {
@@ -20,28 +20,31 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Delete official subscriptions for this email that match the security token
+    // Delete official subscriptions for this security token
     // This will trigger database cascade delete to clean up alert_history automatically
-    const { error: subError, count } = await supabase
+    const { data: subData, error: subError } = await supabase
       .from('subscriptions')
-      .delete({ count: 'exact' })
-      .eq('email', email)
-      .eq('unsubscribe_token', token);
+      .delete()
+      .eq('unsubscribe_token', token)
+      .select('email');
 
     if (subError) {
       console.error('Database error during unsubscribe:', subError);
       return res.status(500).json({ error: 'Failed to process unsubscribe request' });
     }
 
-    if (count === 0) {
-      return res.status(400).json({ error: 'Invalid unsubscribe token or email address' });
+    if (!subData || subData.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired unsubscribe link' });
     }
 
-    // Clean up any pending verification records for this email
-    await supabase
-      .from('subscription_verifications')
-      .delete()
-      .eq('email', email);
+    const unsubscribedEmail = subData[0]?.email;
+    if (unsubscribedEmail) {
+      // Clean up any pending verification records for this email
+      await supabase
+        .from('subscription_verifications')
+        .delete()
+        .eq('email', unsubscribedEmail);
+    }
 
     return res.status(200).json({ success: true });
   } catch (err) {
@@ -49,3 +52,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to process unsubscribe' });
   }
 }
+

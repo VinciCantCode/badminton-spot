@@ -129,7 +129,8 @@ def send_email_notification(config, new_slots):
 
     unsubscribe_footer = ""
     if token:
-        unsubscribe_footer = f'<br/>Want to stop receiving alerts? <a href="https://badminton-spot.vercel.app/?unsubscribe={receiver}&token={token}" style="color: #ef4444; text-decoration: underline;">Unsubscribe here</a>.'
+        unsubscribe_footer = f'<br/>Want to stop receiving alerts? <a href="https://badminton-spot.vercel.app/?unsubscribe={token}" style="color: #ef4444; text-decoration: underline;">Unsubscribe here</a>.'
+
 
     html = f"""
     <html>

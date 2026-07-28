@@ -365,14 +365,11 @@ function App() {
   const [sendingCode, setSendingCode] = useState(false)
 
   // Unsubscribe States
-  const [unsubscribeEmail, setUnsubscribeEmail] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('unsubscribe')
-  })
   const [unsubscribeToken, setUnsubscribeToken] = useState(() => {
     const params = new URLSearchParams(window.location.search)
-    return params.get('token')
+    return params.get('unsubscribe') || params.get('token')
   })
+
   const [unsubscribing, setUnsubscribing] = useState(false)
   const [unsubscribeSuccess, setUnsubscribeSuccess] = useState(false)
   const [unsubscribeError, setUnsubscribeError] = useState('')
@@ -777,7 +774,7 @@ function App() {
       const response = await fetch('/api/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: unsubscribeEmail, token: unsubscribeToken })
+        body: JSON.stringify({ token: unsubscribeToken })
       })
 
       let result = {}
