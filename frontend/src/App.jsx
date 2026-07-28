@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react'
+import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
 // Custom yellow shuttlecock icon representing BadmintonSpot
@@ -1987,6 +1988,9 @@ function App() {
           <span className="toast-message">{toastMessage}</span>
         </div>
       )}
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
   )
 }
