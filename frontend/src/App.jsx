@@ -1906,17 +1906,24 @@ function App() {
                           <div className="sub-chip-group">
                             {/* Locations */}
                             {(sub.locations || []).map(loc => (
-                              <span key={loc} className="sub-chip location">📍 {loc}</span>
+                              <span key={loc} className="sub-chip location">
+                                <MapPin size={13} />
+                                <span>{loc}</span>
+                              </span>
                             ))}
 
                             {/* Weekdays */}
                             {(sub.weekdays || []).map(day => (
-                              <span key={day} className="sub-chip weekday">🗓️ {day.slice(0, 3)}</span>
+                              <span key={day} className="sub-chip weekday">
+                                <Calendar size={13} />
+                                <span>{day.slice(0, 3)}</span>
+                              </span>
                             ))}
 
                             {/* Time range */}
                             <span className="sub-chip time">
-                              🕒 {sub.start_time_min === '00:00:00' && sub.start_time_max === '23:59:59' ? 'Any Time' : `${sub.start_time_min.slice(0, 5)} - ${sub.start_time_max.slice(0, 5)}`}
+                              <Clock size={13} />
+                              <span>{sub.start_time_min === '00:00:00' && sub.start_time_max === '23:59:59' ? 'Any Time' : `${sub.start_time_min.slice(0, 5)} - ${sub.start_time_max.slice(0, 5)}`}</span>
                             </span>
                           </div>
 
