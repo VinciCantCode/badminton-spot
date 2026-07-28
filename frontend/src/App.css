@@ -1171,7 +1171,7 @@ input[type="checkbox"]:checked + .checkbox-custom {
   border-radius: 16px;
   padding: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  z-index: 1000;
 }
 
 .timepicker-options-list {

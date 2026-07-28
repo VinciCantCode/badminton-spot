@@ -286,6 +286,39 @@ const TIME_OPTIONS = (() => {
   return options
 })()
 
+// Convert 12-hour display string "05:30 PM" to 24-hour SQL string "17:30:00"
+const time12to24 = (time12, defaultFallback = '00:00:00') => {
+  if (!time12) return defaultFallback
+  if (time12 === 'Start of Day') return '00:00:00'
+  if (time12 === 'End of Day') return '23:59:59'
+  const parts = time12.split(' ')
+  if (parts.length !== 2) return defaultFallback
+  const [time, modifier] = parts
+  const timeSplit = time.split(':')
+  if (timeSplit.length !== 2) return defaultFallback
+  let [hours, minutes] = timeSplit
+  let h = parseInt(hours, 10)
+  if (isNaN(h)) return defaultFallback
+  if (modifier === 'PM' && h < 12) h += 12
+  if (modifier === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${minutes}:00`
+}
+
+// Convert 24-hour SQL string "17:30:00" to 12-hour display string "05:30 PM"
+const time24to12 = (time24, defaultFallback = '12:00 AM') => {
+  if (!time24 || time24 === '00:00:00') return '12:00 AM'
+  if (time24 === '23:59:59') return '11:59 PM'
+  const timeSplit = time24.split(':')
+  if (timeSplit.length < 2) return defaultFallback
+  let [hours, minutes] = timeSplit
+  let h = parseInt(hours, 10)
+  if (isNaN(h)) return defaultFallback
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const displayHour = h % 12 === 0 ? 12 : h % 12
+  return `${String(displayHour).padStart(2, '0')}:${minutes} ${ampm}`
+}
+
+
 // Custom Premium Time Picker component matching dark glassmorphism theme
 const CustomTimePicker = ({ value, onChange, placeholder, options }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -1762,22 +1795,19 @@ function App() {
                       <div className="form-group">
                         <label className="form-label">Preferred Time Range</label>
                         <div className="time-range-group">
-                          <select value={newMinTime} onChange={(e) => setNewMinTime(e.target.value)} className="time-select">
-                            <option value="00:00:00">Any Time</option>
-                            <option value="12:00:00">After 12:00 PM</option>
-                            <option value="17:00:00">After 5:00 PM (After Work)</option>
-                            <option value="18:00:00">After 6:00 PM</option>
-                            <option value="19:00:00">After 7:00 PM</option>
-                          </select>
+                          <CustomTimePicker
+                            value={time24to12(newMinTime, '12:00 AM')}
+                            onChange={(val) => setNewMinTime(time12to24(val, '00:00:00'))}
+                            placeholder="Start Time"
+                            options={TIME_OPTIONS}
+                          />
                           <span style={{ color: 'var(--text-secondary)' }}>to</span>
-                          <select value={newMaxTime} onChange={(e) => setNewMaxTime(e.target.value)} className="time-select">
-                            <option value="23:59:59">End of Day</option>
-                            <option value="12:00:00">Before 12:00 PM</option>
-                            <option value="15:00:00">Before 3:00 PM</option>
-                            <option value="17:00:00">Before 5:00 PM</option>
-                            <option value="19:00:00">Before 7:00 PM</option>
-                            <option value="21:00:00">Before 9:00 PM</option>
-                          </select>
+                          <CustomTimePicker
+                            value={time24to12(newMaxTime, '11:59 PM')}
+                            onChange={(val) => setNewMaxTime(time12to24(val, '23:59:59'))}
+                            placeholder="End Time"
+                            options={TIME_OPTIONS}
+                          />
                         </div>
                       </div>
 
@@ -1843,22 +1873,19 @@ function App() {
                       <div className="form-group">
                         <label className="form-label">Preferred Time Range</label>
                         <div className="time-range-group">
-                          <select value={editMinTime} onChange={(e) => setEditMinTime(e.target.value)} className="time-select">
-                            <option value="00:00:00">Any Time</option>
-                            <option value="12:00:00">After 12:00 PM</option>
-                            <option value="17:00:00">After 5:00 PM (After Work)</option>
-                            <option value="18:00:00">After 6:00 PM</option>
-                            <option value="19:00:00">After 7:00 PM</option>
-                          </select>
+                          <CustomTimePicker
+                            value={time24to12(editMinTime, '12:00 AM')}
+                            onChange={(val) => setEditMinTime(time12to24(val, '00:00:00'))}
+                            placeholder="Start Time"
+                            options={TIME_OPTIONS}
+                          />
                           <span style={{ color: 'var(--text-secondary)' }}>to</span>
-                          <select value={editMaxTime} onChange={(e) => setEditMaxTime(e.target.value)} className="time-select">
-                            <option value="23:59:59">End of Day</option>
-                            <option value="12:00:00">Before 12:00 PM</option>
-                            <option value="15:00:00">Before 3:00 PM</option>
-                            <option value="17:00:00">Before 5:00 PM</option>
-                            <option value="19:00:00">Before 7:00 PM</option>
-                            <option value="21:00:00">Before 9:00 PM</option>
-                          </select>
+                          <CustomTimePicker
+                            value={time24to12(editMaxTime, '11:59 PM')}
+                            onChange={(val) => setEditMaxTime(time12to24(val, '23:59:59'))}
+                            placeholder="End Time"
+                            options={TIME_OPTIONS}
+                          />
                         </div>
                       </div>
 
