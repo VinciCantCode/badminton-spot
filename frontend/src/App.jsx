@@ -13,7 +13,14 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronDown,
-  Search
+  Search,
+  Sliders,
+  Edit2,
+  Trash2,
+  LogOut,
+  Plus,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react'
 import './App.css'
 
@@ -376,6 +383,228 @@ function App() {
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('')
+
+  // Subscription Management States
+  const [sessionToken, setSessionToken] = useState(() => {
+    return localStorage.getItem('badminton_session_token') || ''
+  })
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
+  const [userSubscriptions, setUserSubscriptions] = useState([])
+  const [userEmail, setUserEmail] = useState('')
+  const [fetchingUserSubs, setFetchingUserSubs] = useState(false)
+  const [userSubsError, setUserSubsError] = useState('')
+
+  // Management Modal OTP Login States
+  const [manageStep, setManageStep] = useState(1) // 1: Email, 2: Code
+  const [manageEmail, setManageEmail] = useState('')
+  const [manageCode, setManageCode] = useState('')
+  const [manageError, setManageError] = useState('')
+  const [manageLoading, setManageLoading] = useState(false)
+
+  // Edit Subscription State
+  const [editingSub, setEditingSub] = useState(null)
+  const [editLocations, setEditLocations] = useState([])
+  const [editDays, setEditDays] = useState([])
+  const [editMinTime, setEditMinTime] = useState('00:00:00')
+  const [editMaxTime, setEditMaxTime] = useState('23:59:59')
+
+  // Helper to fetch user's active subscriptions from serverless API
+  const fetchUserSubscriptions = async (tokenOverride) => {
+    const tokenToUse = tokenOverride || sessionToken
+    if (!tokenToUse) return
+
+    setFetchingUserSubs(true)
+    setUserSubsError('')
+    try {
+      const response = await fetch('/api/user/subscriptions', {
+        headers: {
+          'Authorization': `Bearer ${tokenToUse}`
+        }
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) {
+          throw new Error('API server unreachable in static dev server mode.')
+        }
+      }
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('badminton_session_token')
+          setSessionToken('')
+          setManageStep(1)
+        }
+        throw new Error(res.error || 'Failed to fetch subscriptions')
+      }
+
+      setUserSubscriptions(res.subscriptions || [])
+      if (res.email) setUserEmail(res.email)
+    } catch (err) {
+      console.error('Error fetching user subscriptions:', err)
+      setUserSubsError(err.message || 'Failed to fetch active subscriptions.')
+    } finally {
+      setFetchingUserSubs(false)
+    }
+  }
+
+  // Auto-fetch subscriptions if sessionToken is present when management modal opens
+  useEffect(() => {
+    if (isManageModalOpen && sessionToken) {
+      fetchUserSubscriptions(sessionToken)
+    }
+  }, [isManageModalOpen, sessionToken])
+
+  // Step 1: Send OTP for Management Dashboard
+  const handleSendManageCodeSubmit = async (e) => {
+    e.preventDefault()
+    if (!manageEmail) return
+
+    setManageLoading(true)
+    setManageError('')
+    try {
+      const response = await fetch('/api/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: manageEmail })
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) throw new Error('API server unreachable in local dev mode.')
+      }
+      if (!response.ok) throw new Error(res.error || 'Failed to send verification code')
+
+      setManageStep(2)
+      showToast('Verification code sent to your email!')
+    } catch (err) {
+      setManageError(err.message || 'Failed to send code.')
+    } finally {
+      setManageLoading(false)
+    }
+  }
+
+  // Step 2: Verify OTP and save JWT session token
+  const handleVerifyManageCodeSubmit = async (e) => {
+    e.preventDefault()
+    if (!manageEmail || !manageCode) return
+
+    setManageLoading(true)
+    setManageError('')
+    try {
+      const response = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: manageEmail, code: manageCode })
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) throw new Error('API server unreachable in local dev mode.')
+      }
+      if (!response.ok) throw new Error(res.error || 'Invalid verification code')
+
+      if (res.session_token) {
+        localStorage.setItem('badminton_session_token', res.session_token)
+        setSessionToken(res.session_token)
+        setUserEmail(res.email || manageEmail)
+        showToast('Logged into Subscription Manager!')
+        fetchUserSubscriptions(res.session_token)
+      }
+    } catch (err) {
+      setManageError(err.message || 'Verification failed.')
+    } finally {
+      setManageLoading(false)
+    }
+  }
+
+  // Delete a subscription rule
+  const handleDeleteSubscription = async (subId) => {
+    if (!window.confirm('Are you sure you want to delete this court alert subscription?')) return
+
+    try {
+      const response = await fetch('/api/user/subscriptions', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({ id: subId })
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) throw new Error('API server unreachable.')
+      }
+      if (!response.ok) throw new Error(res.error || 'Failed to delete subscription')
+
+      setUserSubscriptions(prev => prev.filter(item => item.id !== subId))
+      showToast('Subscription deleted successfully.')
+    } catch (err) {
+      alert(err.message || 'Error deleting subscription.')
+    }
+  }
+
+  // Start editing a subscription rule
+  const handleStartEditSub = (sub) => {
+    setEditingSub(sub)
+    setEditLocations(sub.locations || [])
+    setEditDays(sub.weekdays || [])
+    setEditMinTime(sub.start_time_min || '00:00:00')
+    setEditMaxTime(sub.start_time_max || '23:59:59')
+  }
+
+  // Save edited subscription rule
+  const handleSaveEditSubSubmit = async (e) => {
+    e.preventDefault()
+    if (!editingSub) return
+
+    try {
+      const response = await fetch('/api/user/subscriptions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          id: editingSub.id,
+          locations: editLocations,
+          weekdays: editDays,
+          start_time_min: editMinTime,
+          start_time_max: editMaxTime
+        })
+      })
+      let res = {}
+      try {
+        res = await response.json()
+      } catch {
+        if (!response.ok) throw new Error('API server unreachable.')
+      }
+      if (!response.ok) throw new Error(res.error || 'Failed to update subscription')
+
+      setUserSubscriptions(prev => prev.map(item => item.id === editingSub.id ? res.subscription : item))
+      setEditingSub(null)
+      showToast('Subscription criteria updated!')
+    } catch (err) {
+      alert(err.message || 'Error updating subscription.')
+    }
+  }
+
+  // Log Out from Subscription Manager
+  const handleManageLogout = () => {
+    localStorage.removeItem('badminton_session_token')
+    setSessionToken('')
+    setUserSubscriptions([])
+    setUserEmail('')
+    setManageStep(1)
+    setManageEmail('')
+    setManageCode('')
+    showToast('Logged out of Subscription Manager.')
+  }
+
 
   // Fetch slots on load
   useEffect(() => {
@@ -878,6 +1107,14 @@ function App() {
         </div>
         
         <div className="header-right">
+          <button 
+            onClick={() => setIsManageModalOpen(true)} 
+            className="manage-alerts-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(163, 230, 53, 0.12)', color: 'var(--accent-neon)', border: '1px solid rgba(163, 230, 53, 0.3)', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', transition: 'all 0.2s ease' }}
+          >
+            <Sliders size={16} />
+            <span>My Subscriptions</span>
+          </button>
           <div className="sync-status">
             <span className="status-dot"></span>
             <span>Live Sync</span>
@@ -888,15 +1125,6 @@ function App() {
             >
               <RefreshCw size={14} className={loading ? "spinner" : ""} />
             </button>
-          </div>
-          <div className="notification-icon-container">
-            <Bell size={20} className="bell-icon" />
-            <span className="bell-badge"></span>
-          </div>
-          <div className="user-profile">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Avatar" className="avatar-img" />
-            <span className="user-name">Alex R.</span>
-            <ChevronDown size={14} className="user-chevron" />
           </div>
         </div>
       </header>
@@ -1321,6 +1549,272 @@ function App() {
                   Awesome, Thanks!
                 </button>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+      {/* Personal Subscription Management Modal */}
+      {isManageModalOpen && (
+        <div className="modal-overlay" onClick={() => { setIsManageModalOpen(false); setEditingSub(null); }}>
+          <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px', width: '92%' }}>
+            <button className="close-btn" onClick={() => { setIsManageModalOpen(false); setEditingSub(null); }}>
+              <X size={24} />
+            </button>
+
+            {!sessionToken ? (
+              // Login / Verify OTP View for Manager
+              <>
+                {manageStep === 1 ? (
+                  <>
+                    <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Sliders size={22} style={{ color: 'var(--accent-neon)' }} />
+                      <span>Manage Your Subscriptions</span>
+                    </h2>
+                    <p className="modal-subtitle" style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      Enter your registered email to receive a 6-digit login code. No password required.
+                    </p>
+
+                    <form onSubmit={handleSendManageCodeSubmit}>
+                      <div className="form-group">
+                        <label className="form-label">Registered Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="e.g. yourname@domain.com"
+                          value={manageEmail}
+                          onChange={(e) => setManageEmail(e.target.value)}
+                          className="form-input"
+                        />
+                      </div>
+
+                      {manageError && (
+                        <div className="modal-error-box" style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <AlertTriangle size={16} />
+                          <span>{manageError}</span>
+                        </div>
+                      )}
+
+                      <button type="submit" disabled={manageLoading} className="submit-btn">
+                        {manageLoading ? 'Sending Login Code...' : 'Send Login Code'}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="modal-title">🔐 Enter Login Code</h2>
+                    <form onSubmit={handleVerifyManageCodeSubmit}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ marginBottom: '8px' }}>
+                          Enter the 6-digit verification code sent to:
+                          <strong style={{ display: 'block', color: 'var(--text-primary)', marginTop: '4px' }}>{manageEmail}</strong>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={6}
+                          placeholder="e.g. 123456"
+                          value={manageCode}
+                          onChange={(e) => setManageCode(e.target.value)}
+                          className="form-input"
+                          style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
+                        />
+                      </div>
+
+                      {manageError && (
+                        <div className="modal-error-box" style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <AlertTriangle size={16} />
+                          <span>{manageError}</span>
+                        </div>
+                      )}
+
+                      <button type="submit" disabled={manageLoading} className="submit-btn" style={{ marginBottom: '15px' }}>
+                        {manageLoading ? 'Verifying...' : 'Log In & Manage Alerts'}
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setManageStep(1)} 
+                        className="back-to-step1-btn"
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', cursor: 'pointer', fontSize: '14px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}
+                      >
+                        Use a different email address
+                      </button>
+                    </form>
+                  </>
+                )}
+              </>
+            ) : (
+              // Active Subscriptions Dashboard View
+              <>
+                <div className="user-badge-bar">
+                  <div className="user-badge-email">
+                    <ShieldCheck size={18} />
+                    <span>{userEmail || 'Active Session'}</span>
+                  </div>
+                  <button onClick={handleManageLogout} className="btn-logout">
+                    <LogOut size={14} />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+
+                {editingSub ? (
+                  // Edit Criteria Form
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Edit2 size={18} style={{ color: 'var(--accent-neon)' }} />
+                      <span>Edit Subscription Criteria</span>
+                    </h3>
+
+                    <form onSubmit={handleSaveEditSubSubmit}>
+                      {/* Locations */}
+                      <div className="form-group">
+                        <label className="form-label">Filtered Locations</label>
+                        <div className="checkbox-grid">
+                          {LOCATIONS.map(loc => (
+                            <label key={loc.id} className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={editLocations.includes(loc.id)}
+                                onChange={() => setEditLocations(prev => prev.includes(loc.id) ? prev.filter(i => i !== loc.id) : [...prev, loc.id])}
+                              />
+                              <span className="checkbox-custom">
+                                {editLocations.includes(loc.id) && <CheckCircle size={14} />}
+                              </span>
+                              <span>{loc.id}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Weekdays */}
+                      <div className="form-group">
+                        <label className="form-label">Filtered Weekdays</label>
+                        <div className="checkbox-grid">
+                          {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
+                            const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
+                            return (
+                              <label key={dayAbbr} className="checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={editDays.includes(fullName)}
+                                  onChange={() => setEditDays(prev => prev.includes(fullName) ? prev.filter(d => d !== fullName) : [...prev, fullName])}
+                                />
+                                <span className="checkbox-custom">
+                                  {editDays.includes(fullName) && <CheckCircle size={14} />}
+                                </span>
+                                <span>{dayAbbr}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Time Range */}
+                      <div className="form-group">
+                        <label className="form-label">Preferred Time Range</label>
+                        <div className="time-range-group">
+                          <select value={editMinTime} onChange={(e) => setEditMinTime(e.target.value)} className="time-select">
+                            <option value="00:00:00">Any Time</option>
+                            <option value="12:00:00">After 12:00 PM</option>
+                            <option value="17:00:00">After 5:00 PM (After Work)</option>
+                            <option value="18:00:00">After 6:00 PM</option>
+                            <option value="19:00:00">After 7:00 PM</option>
+                          </select>
+                          <span style={{ color: 'var(--text-secondary)' }}>to</span>
+                          <select value={editMaxTime} onChange={(e) => setEditMaxTime(e.target.value)} className="time-select">
+                            <option value="23:59:59">End of Day</option>
+                            <option value="12:00:00">Before 12:00 PM</option>
+                            <option value="15:00:00">Before 3:00 PM</option>
+                            <option value="17:00:00">Before 5:00 PM</option>
+                            <option value="19:00:00">Before 7:00 PM</option>
+                            <option value="21:00:00">Before 9:00 PM</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <button type="submit" className="submit-btn" style={{ flex: 1 }}>Save Changes</button>
+                        <button type="button" onClick={() => setEditingSub(null)} className="submit-btn" style={{ flex: 1, background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)' }}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  // List Active Subscriptions
+                  <div className="sub-management-container">
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Active Alert Rules ({userSubscriptions.length})</span>
+                      <button onClick={() => fetchUserSubscriptions(sessionToken)} className="refresh-btn" title="Refresh rules">
+                        <RefreshCw size={14} className={fetchingUserSubs ? "spinner" : ""} />
+                      </button>
+                    </h3>
+
+                    {fetchingUserSubs ? (
+                      <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Loading active subscriptions...</p>
+                    ) : userSubscriptions.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px 20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                        <Bell size={36} style={{ color: 'var(--text-secondary)', margin: '0 auto 10px', opacity: 0.5 }} />
+                        <p style={{ color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>No Active Alert Subscriptions</p>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>You haven't set up any active court alerts for this email yet.</p>
+                      </div>
+                    ) : (
+                      userSubscriptions.map(sub => (
+                        <div key={sub.id} className="sub-card">
+                          <div className="sub-card-header">
+                            <div className="sub-card-title">
+                              <Bell size={16} style={{ color: 'var(--accent-neon)' }} />
+                              <span>Badminton Alert Rule</span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                              Created {new Date(sub.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          <div className="sub-chip-group">
+                            {/* Locations */}
+                            {(sub.locations || []).map(loc => (
+                              <span key={loc} className="sub-chip location">📍 {loc}</span>
+                            ))}
+
+                            {/* Weekdays */}
+                            {(sub.weekdays || []).map(day => (
+                              <span key={day} className="sub-chip weekday">🗓️ {day.slice(0, 3)}</span>
+                            ))}
+
+                            {/* Time range */}
+                            <span className="sub-chip">
+                              🕒 {sub.start_time_min === '00:00:00' && sub.start_time_max === '23:59:59' ? 'Any Time' : `${sub.start_time_min.slice(0, 5)} - ${sub.start_time_max.slice(0, 5)}`}
+                            </span>
+                          </div>
+
+                          <div className="sub-actions">
+                            <button onClick={() => handleStartEditSub(sub)} className="btn-sub-action edit">
+                              <Edit2 size={13} />
+                              <span>Edit Criteria</span>
+                            </button>
+                            <button onClick={() => handleDeleteSubscription(sub.id)} className="btn-sub-action delete">
+                              <Trash2 size={13} />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    <button 
+                      onClick={() => {
+                        setIsManageModalOpen(false)
+                        handleNewAlertClick()
+                      }} 
+                      className="add-alert-rule-btn"
+                    >
+                      <Plus size={16} />
+                      <span>Create New Alert Subscription Rule</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

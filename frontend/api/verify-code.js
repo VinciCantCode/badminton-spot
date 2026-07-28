@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { signToken } from './_jwt.js';
 
 export default async function handler(req, res) {
   // Reject non-POST requests
@@ -33,21 +34,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid or expired verification code' });
     }
 
-    // Insert the verified parameters into the official subscriptions table
-    const { error: insertError } = await supabase
-      .from('subscriptions')
-      .insert({
-        email,
-        locations: record.locations,
-        weekdays: record.weekdays,
-        start_time_min: record.start_time_min,
-        start_time_max: record.start_time_max,
-        is_active: true
-      });
+    // If verification record contains subscription criteria, insert into subscriptions table
+    if (record.locations && Array.isArray(record.locations) && record.locations.length > 0) {
+      const { error: insertError } = await supabase
+        .from('subscriptions')
+        .insert({
+          email,
+          locations: record.locations,
+          weekdays: record.weekdays,
+          start_time_min: record.start_time_min,
+          start_time_max: record.start_time_max,
+          is_active: true
+        });
 
-    if (insertError) {
-      console.error('Database error inserting official subscription:', insertError);
-      return res.status(500).json({ error: 'Failed to save subscription' });
+      if (insertError) {
+        console.error('Database error inserting official subscription:', insertError);
+        return res.status(500).json({ error: 'Failed to save subscription' });
+      }
     }
 
     // Clean up/delete the verification record so it cannot be reused
@@ -56,9 +59,16 @@ export default async function handler(req, res) {
       .delete()
       .eq('email', email);
 
-    return res.status(200).json({ success: true });
+    // Sign 7-day JWT session token
+    const sessionToken = signToken({ email: email });
+
+    return res.status(200).json({
+      success: true,
+      session_token: sessionToken,
+      email: email
+    });
   } catch (err) {
-    console.error('Server error during code verification:', err);
-    return res.status(500).json({ error: 'Failed to process code verification' });
+    console.error('Server error verifying code:', err);
+    return res.status(500).json({ error: 'Failed to process verification' });
   }
 }
