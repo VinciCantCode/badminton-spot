@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#a3e635" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Rotated so feather opening points towards top-left, identical to website logo icon -->
-  <g transform="rotate(-135 12 12)">
+  <!-- Feather opening (wide end) facing top-left (10:30 direction), cork base facing bottom-right -->
+  <g transform="rotate(-45 12 12)">
     <!-- Cork base -->
     <path d="M12 20c1.657 0 3-1.343 3-3H9c0 1.657 1.343 3 3 3z" fill="#a3e635" stroke="#a3e635" />
     <!-- Feather cage -->
