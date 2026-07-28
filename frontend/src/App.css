@@ -1285,10 +1285,29 @@ input[type="checkbox"]:checked + .checkbox-custom {
 .sub-management-container {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  max-height: 72vh;
+  gap: 16px;
+  max-height: 52vh;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+/* Custom scrollbar for sub-management-container */
+.sub-management-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sub-management-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 99px;
+}
+
+.sub-management-container::-webkit-scrollbar-thumb {
+  background: rgba(163, 230, 53, 0.3);
+  border-radius: 99px;
+}
+
+.sub-management-container::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-neon);
 }
 
 .user-badge-bar {
@@ -1346,6 +1365,7 @@ input[type="checkbox"]:checked + .checkbox-custom {
 }
 
 .sub-card {
+  flex-shrink: 0;
   background: linear-gradient(145deg, rgba(26, 35, 50, 0.75) 0%, rgba(13, 19, 31, 0.85) 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;

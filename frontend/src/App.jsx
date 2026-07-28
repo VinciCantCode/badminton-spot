@@ -1953,7 +1953,7 @@ function App() {
                           <div className="sub-actions">
                             <button onClick={() => handleStartEditSub(sub)} className="btn-sub-action edit">
                               <Edit2 size={13} />
-                              <span>Edit Criteria</span>
+                              <span>Edit</span>
                             </button>
                             <button onClick={() => handleDeleteSubscription(sub.id)} className="btn-sub-action delete">
                               <Trash2 size={13} />
