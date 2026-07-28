@@ -1488,7 +1488,23 @@ function App() {
 
                       {/* Locations */}
                       <div className="form-group">
-                        <label className="form-label">Locations (Select to Filter)</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Locations</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allLocs = LOCATIONS.map(l => l.id)
+                              if (modalLocations.length === allLocs.length) {
+                                setModalLocations([])
+                              } else {
+                                setModalLocations(allLocs)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {modalLocations.length === LOCATIONS.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {LOCATIONS.map(loc => (
                             <label key={loc.id} className="checkbox-label">
@@ -1508,7 +1524,23 @@ function App() {
 
                       {/* Weekdays */}
                       <div className="form-group">
-                        <label className="form-label">Weekdays</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Weekdays</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allDays = Object.values(WEEKDAY_FULL_NAMES)
+                              if (modalDays.length === allDays.length) {
+                                setModalDays([])
+                              } else {
+                                setModalDays(allDays)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {modalDays.length === Object.values(WEEKDAY_FULL_NAMES).length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
                             const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
@@ -1751,7 +1783,23 @@ function App() {
                     <form onSubmit={handleCreateNewRuleSubmit}>
                       {/* Locations */}
                       <div className="form-group">
-                        <label className="form-label">Filtered Locations</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Locations</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allLocs = LOCATIONS.map(l => l.id)
+                              if (newLocations.length === allLocs.length) {
+                                setNewLocations([])
+                              } else {
+                                setNewLocations(allLocs)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {newLocations.length === LOCATIONS.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {LOCATIONS.map(loc => (
                             <label key={loc.id} className="checkbox-label">
@@ -1771,7 +1819,23 @@ function App() {
 
                       {/* Weekdays */}
                       <div className="form-group">
-                        <label className="form-label">Filtered Weekdays</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Weekdays</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allDays = Object.values(WEEKDAY_FULL_NAMES)
+                              if (newDays.length === allDays.length) {
+                                setNewDays([])
+                              } else {
+                                setNewDays(allDays)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {newDays.length === Object.values(WEEKDAY_FULL_NAMES).length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
                             const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
@@ -1829,7 +1893,23 @@ function App() {
                     <form onSubmit={handleSaveEditSubSubmit}>
                       {/* Locations */}
                       <div className="form-group">
-                        <label className="form-label">Filtered Locations</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Locations</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allLocs = LOCATIONS.map(l => l.id)
+                              if (editLocations.length === allLocs.length) {
+                                setEditLocations([])
+                              } else {
+                                setEditLocations(allLocs)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {editLocations.length === LOCATIONS.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {LOCATIONS.map(loc => (
                             <label key={loc.id} className="checkbox-label">
@@ -1849,7 +1929,23 @@ function App() {
 
                       {/* Weekdays */}
                       <div className="form-group">
-                        <label className="form-label">Filtered Weekdays</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ marginBottom: 0 }}>Weekdays</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allDays = Object.values(WEEKDAY_FULL_NAMES)
+                              if (editDays.length === allDays.length) {
+                                setEditDays([])
+                              } else {
+                                setEditDays(allDays)
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-neon)', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                          >
+                            {editDays.length === Object.values(WEEKDAY_FULL_NAMES).length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                         <div className="checkbox-grid">
                           {Object.keys(WEEKDAY_FULL_NAMES).map(dayAbbr => {
                             const fullName = WEEKDAY_FULL_NAMES[dayAbbr]
