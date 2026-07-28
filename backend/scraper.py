@@ -112,6 +112,7 @@ def send_email_notification(config, new_slots):
     # Create HTML table for slots
     table_rows = ""
     for slot in new_slots:
+        booking_link = slot[6] if len(slot) > 6 else BOOKING_PAGE_URL
         table_rows += f"""
         <tr>
             <td style="border:1px solid #ddd; padding:8px;">{slot[0]}</td>
@@ -120,6 +121,9 @@ def send_email_notification(config, new_slots):
             <td style="border:1px solid #ddd; padding:8px;">{slot[3]}</td>
             <td style="border:1px solid #ddd; padding:8px; font-weight:bold; color:#2e7d32;">{slot[4]}</td>
             <td style="border:1px solid #ddd; padding:8px;">{slot[5]}</td>
+            <td style="border:1px solid #ddd; padding:8px; text-align:center;">
+                <a href="{booking_link}" target="_blank" style="background-color: #84cc16; color: #000; padding: 6px 12px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block;">Book Now</a>
+            </td>
         </tr>
         """
 
@@ -140,12 +144,14 @@ def send_email_notification(config, new_slots):
                     <th style="border:1px solid #ddd; padding:8px; text-align:left;">Activity</th>
                     <th style="border:1px solid #ddd; padding:8px; text-align:left;">Availability</th>
                     <th style="border:1px solid #ddd; padding:8px; text-align:left;">Price</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:center;">Direct Action</th>
                 </tr>
             </thead>
             <tbody>
                 {table_rows}
             </tbody>
         </table>
+
         <br/>
         <p>Booking link: <a href="{BOOKING_PAGE_URL}" style="color: #1a73e8; font-weight: bold; text-decoration: none;">Book Now on NVRC PerfectMind</a></p>
         <p style="font-size:12px; color:#888; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
@@ -291,6 +297,9 @@ def process_scraping(args, config, sent_alerts):
         price = c.get("PriceRange", "")
         button_text = c.get("BookButtonText", "")
         event_id = c.get("EventId", "")
+        course_id = c.get("CourseId") or c.get("CourseIdTrimmed") or ""
+        booking_url = f"{BASE_URL}/23734/Clients/BookMe4LandingPages/CoursesLandingPage?widgetId={WIDGET_ID}&redirectedFromEmbededMode=False&courseId={event_id}"
+
 
         # Determine readable status
         if spots == "Full":
@@ -489,7 +498,7 @@ def purge_expired_slots_from_supabase(supabase_url, supabase_key):
         "Content-Type": "application/json"
     }
     try:
-        delete_url = f"{url}?end_time=lt.{now_iso}"
+        delete_url = f"{url}?end_time=lt.{requests.utils.quote(now_iso)}"
         response = requests.delete(delete_url, headers=headers, timeout=15)
         response.raise_for_status()
         print("Successfully purged expired slots from Supabase database.")
@@ -577,6 +586,9 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
         price_str = c.get("PriceRange", "").replace("$", "").strip()
         button_text = c.get("BookButtonText", "")
         event_id = c.get("EventId", "")
+        course_id = c.get("CourseId") or c.get("CourseIdTrimmed") or ""
+        booking_url = f"{BASE_URL}/23734/Clients/BookMe4LandingPages/CoursesLandingPage?widgetId={WIDGET_ID}&redirectedFromEmbededMode=False&courseId={event_id}"
+
 
         # Skip slots that are not actual badminton courts
         if "Badminton" not in event_name:
@@ -607,6 +619,7 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
         # Prepare payload for Supabase slots table
         slot_payload = {
             "event_id": event_id,
+            "course_id": course_id,
             "event_name": event_name,
             "location_name": location,
             "date_desc": date_desc,
@@ -616,6 +629,7 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
             "spots_count": spots_count,
             "price": price,
             "button_text": button_text,
+            "booking_url": booking_url,
             "last_updated": datetime.now().astimezone().isoformat()
         }
         all_slots_payload.append(slot_payload)
@@ -718,7 +732,8 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
                     s["location_name"],
                     s["event_name"],
                     s["spots"],
-                    f"${s['price']:.2f}"
+                    f"${s['price']:.2f}",
+                    s["booking_url"]
                 ])
             
             send_email_notification(user_config, formatted_slots)
