@@ -681,7 +681,15 @@ function App() {
         })
       })
 
-      const result = await response.json()
+      let result = {}
+      try {
+        result = await response.json()
+      } catch {
+        if (!response.ok) {
+          throw new Error(`Server returned HTTP ${response.status}. API endpoint is unreachable in local Vite dev mode. Please test on Vercel or run 'npx vercel dev'.`)
+        }
+      }
+
       if (!response.ok) {
         throw new Error(result.error || 'Failed to send verification code')
       }
@@ -713,7 +721,15 @@ function App() {
         })
       })
 
-      const result = await response.json()
+      let result = {}
+      try {
+        result = await response.json()
+      } catch {
+        if (!response.ok) {
+          throw new Error(`Server returned HTTP ${response.status}. API endpoint is unreachable in local Vite dev mode. Please test on Vercel or run 'npx vercel dev'.`)
+        }
+      }
+
       if (!response.ok) {
         throw new Error(result.error || 'Invalid verification code')
       }
@@ -764,7 +780,15 @@ function App() {
         body: JSON.stringify({ email: unsubscribeEmail, token: unsubscribeToken })
       })
 
-      const result = await response.json()
+      let result = {}
+      try {
+        result = await response.json()
+      } catch {
+        if (!response.ok) {
+          throw new Error(`Server returned HTTP ${response.status}. API endpoint is unreachable in local Vite dev mode. Please test on Vercel or run 'npx vercel dev'.`)
+        }
+      }
+
       if (!response.ok) {
         throw new Error(result.error || 'Failed to process unsubscribe request')
       }
