@@ -6,10 +6,18 @@ export function generateConfirmationEmailHtml({
   locations = [],
   weekdays = [],
   start_time_min = '00:00:00',
-  start_time_max = '23:59:59'
+  start_time_max = '23:59:59',
+  type = 'created'
 }) {
   const unsubscribeToken = signToken({ email });
   const unsubscribeUrl = `https://badmintonspot.ca/?unsubscribe=${unsubscribeToken}`;
+
+  const isUpdate = type === 'updated';
+  const badgeText = isUpdate ? 'Updated Alert Rule' : 'Active Alert Rule';
+  const titleText = isUpdate ? 'Alert Subscription Updated' : 'Alert Subscription Confirmed';
+  const descText = isUpdate
+    ? 'Your badminton court monitoring rule has been updated successfully. We will continuously track NVRC court openings based on your updated criteria.'
+    : 'Your badminton court monitoring rule is now active. We will continuously track NVRC court openings and notify you instantly when a slot opens up.';
 
   // Format locations display
   const allLocations = ['Delbrook', 'Lions Gate', 'Parkgate', 'John Braithwaite', 'Lynn Creek'];
@@ -45,7 +53,7 @@ export function generateConfirmationEmailHtml({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscription Confirmed</title>
+  <title>${titleText}</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#334155;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f8fafc; padding: 40px 12px;">
@@ -65,7 +73,7 @@ export function generateConfirmationEmailHtml({
                   </td>
                   <td align="right">
                     <span style="background:#f7fee7; border:1px solid #bef264; color:#4d7c0f; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:700;">
-                      Active Alert Rule
+                      ${badgeText}
                     </span>
                   </td>
                 </tr>
@@ -77,10 +85,10 @@ export function generateConfirmationEmailHtml({
           <tr>
             <td style="padding: 35px;">
               <h2 style="font-size: 24px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">
-                Alert Subscription Confirmed
+                ${titleText}
               </h2>
               <p style="font-size: 15px; color: #64748b; line-height: 1.6; margin-top: 0; margin-bottom: 25px;">
-                Your badminton court monitoring rule is now active. We will continuously track NVRC court openings and notify you instantly when a slot opens up.
+                ${descText}
               </p>
 
               <!-- Subscription Rule Details Card -->
@@ -152,7 +160,7 @@ export function generateConfirmationEmailHtml({
 }
 
 export async function sendConfirmationEmail(options) {
-  const { email } = options;
+  const { email, type = 'created' } = options;
   if (!email) return;
 
   try {
@@ -173,14 +181,17 @@ export async function sendConfirmationEmail(options) {
     });
 
     const html = generateConfirmationEmailHtml(options);
+    const subject = type === 'updated'
+      ? '[BadmintonSpot] Alert Subscription Updated!'
+      : '[BadmintonSpot] Alert Subscription Confirmed!';
 
     await transporter.sendMail({
       from: `"BadmintonSpot Alerts" <${senderEmail}>`,
       to: email,
-      subject: '[BadmintonSpot] Alert Subscription Confirmed!',
+      subject,
       html
     });
-    console.log('Confirmation email successfully sent to:', email);
+    console.log(`Confirmation email (${type}) successfully sent to:`, email);
   } catch (err) {
     console.error('Error sending confirmation email via Nodemailer:', err);
   }

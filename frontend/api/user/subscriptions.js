@@ -103,6 +103,21 @@ export default async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // Send immediate Rule Updated Email (Scenario C)
+      try {
+        await sendConfirmationEmail({
+          email: userEmail,
+          locations: data.locations,
+          weekdays: data.weekdays,
+          start_time_min: data.start_time_min,
+          start_time_max: data.start_time_max,
+          type: 'updated'
+        });
+      } catch (err) {
+        console.error('Error sending rule update email:', err);
+      }
+
       return res.status(200).json({ success: true, subscription: data });
     } catch (err) {
       console.error('Error updating subscription:', err);
