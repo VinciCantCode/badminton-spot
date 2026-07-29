@@ -464,8 +464,10 @@ def fetch_active_subscriptions(supabase_url, supabase_key):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error fetching active subscriptions from Supabase: {e}", file=sys.stderr)
-        return []
+        print(f"CRITICAL ERROR: Error fetching active subscriptions from Supabase: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response details: {e.response.text}", file=sys.stderr)
+        sys.exit(1)
 
 def upsert_slots_to_supabase(supabase_url, supabase_key, slots):
     """Upserts list of slots into Supabase 'slots' table."""
@@ -483,9 +485,10 @@ def upsert_slots_to_supabase(supabase_url, supabase_key, slots):
         response.raise_for_status()
         print(f"Successfully upserted {len(slots)} slots to Supabase.")
     except Exception as e:
-        print(f"Error upserting slots to Supabase: {e}", file=sys.stderr)
+        print(f"CRITICAL ERROR: Error upserting slots to Supabase: {e}", file=sys.stderr)
         if hasattr(e, 'response') and e.response is not None:
             print(f"Response details: {e.response.text}", file=sys.stderr)
+        sys.exit(1)
 
 def purge_expired_slots_from_supabase(supabase_url, supabase_key):
     """Deletes slots from Supabase 'slots' table where end_time has passed relative to current time."""
