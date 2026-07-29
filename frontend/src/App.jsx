@@ -460,15 +460,18 @@ function App() {
 
   const handleCreateNewRuleSubmit = async (e) => {
     e.preventDefault()
+    setUserSubsError('')
 
     if (newLocations.length === 0) {
-      showToast('Please select at least one location.')
-      alert('Please select at least one location.')
+      const msg = 'Please select at least one location.'
+      setUserSubsError(msg)
+      showToast(msg)
       return
     }
     if (newDays.length === 0) {
-      showToast('Please select at least one weekday.')
-      alert('Please select at least one weekday.')
+      const msg = 'Please select at least one weekday.'
+      setUserSubsError(msg)
+      showToast(msg)
       return
     }
 
@@ -498,7 +501,8 @@ function App() {
       setAddingNewRule(false)
       showToast('New alert rule created successfully!')
     } catch (err) {
-      alert(err.message || 'Error creating subscription rule.')
+      setUserSubsError(err.message || 'Error creating subscription rule.')
+      showToast(err.message || 'Error creating subscription rule.')
     }
   }
 
@@ -639,7 +643,8 @@ function App() {
       setUserSubscriptions(prev => prev.filter(item => item.id !== subId))
       showToast('Subscription deleted successfully.')
     } catch (err) {
-      alert(err.message || 'Error deleting subscription.')
+      setUserSubsError(err.message || 'Error deleting subscription.')
+      showToast(err.message || 'Error deleting subscription.')
     }
   }
 
@@ -650,21 +655,25 @@ function App() {
     setEditDays(sub.weekdays || [])
     setEditMinTime(sub.start_time_min || '00:00:00')
     setEditMaxTime(sub.start_time_max || '23:59:59')
+    setUserSubsError('')
   }
 
   // Save edited subscription rule
   const handleSaveEditSubSubmit = async (e) => {
     e.preventDefault()
     if (!editingSub) return
+    setUserSubsError('')
 
     if (editLocations.length === 0) {
-      showToast('Please select at least one location.')
-      alert('Please select at least one location.')
+      const msg = 'Please select at least one location.'
+      setUserSubsError(msg)
+      showToast(msg)
       return
     }
     if (editDays.length === 0) {
-      showToast('Please select at least one weekday.')
-      alert('Please select at least one weekday.')
+      const msg = 'Please select at least one weekday.'
+      setUserSubsError(msg)
+      showToast(msg)
       return
     }
 
@@ -695,7 +704,8 @@ function App() {
       setEditingSub(null)
       showToast('Subscription criteria updated!')
     } catch (err) {
-      alert(err.message || 'Error updating subscription.')
+      setUserSubsError(err.message || 'Error updating subscription.')
+      showToast(err.message || 'Error updating subscription.')
     }
   }
 
@@ -1804,6 +1814,25 @@ function App() {
                     <span>Log Out</span>
                   </button>
                 </div>
+
+                {userSubsError && (
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    margin: '12px 0 16px 0'
+                  }}>
+                    <AlertCircle size={16} />
+                    <span>{userSubsError}</span>
+                  </div>
+                )}
 
                 {addingNewRule ? (
                   // Add New Rule Form (Authenticated)
