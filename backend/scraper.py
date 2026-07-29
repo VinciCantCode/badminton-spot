@@ -620,7 +620,6 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
         # Prepare payload for Supabase slots table
         slot_payload = {
             "event_id": event_id,
-            "course_id": course_id,
             "event_name": event_name,
             "location_name": location,
             "date_desc": date_desc,
