@@ -58,14 +58,21 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
+      // Fetch all active rules for this user email
+      const { data: allUserRules } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('email', userEmail)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
       // Send immediate Confirmation Email (Scenario B)
       try {
         await sendConfirmationEmail({
           email: userEmail,
-          locations: data.locations,
-          weekdays: data.weekdays,
-          start_time_min: data.start_time_min,
-          start_time_max: data.start_time_max
+          currentRule: data,
+          allRules: allUserRules || [],
+          type: 'created'
         });
       } catch (err) {
         console.error('Error sending Scenario B confirmation email:', err);
@@ -104,14 +111,20 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
+      // Fetch all active rules for this user email
+      const { data: allUserRules } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('email', userEmail)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
       // Send immediate Rule Updated Email (Scenario C)
       try {
         await sendConfirmationEmail({
           email: userEmail,
-          locations: data.locations,
-          weekdays: data.weekdays,
-          start_time_min: data.start_time_min,
-          start_time_max: data.start_time_max,
+          currentRule: data,
+          allRules: allUserRules || [],
           type: 'updated'
         });
       } catch (err) {

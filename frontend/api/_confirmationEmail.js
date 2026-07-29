@@ -3,35 +3,24 @@ import { signToken } from './_jwt.js';
 
 export function generateConfirmationEmailHtml({
   email,
-  locations = [],
-  weekdays = [],
-  start_time_min = '00:00:00',
-  start_time_max = '23:59:59',
+  currentRule = {},
+  allRules = [],
   type = 'created'
 }) {
   const unsubscribeToken = signToken({ email });
   const unsubscribeUrl = `https://badmintonspot.ca/?unsubscribe=${unsubscribeToken}`;
 
   const isUpdate = type === 'updated';
-  const badgeText = isUpdate ? 'Updated Alert Rule' : 'Active Alert Rule';
+  const totalCount = (allRules && allRules.length > 0) ? allRules.length : 1;
+  const badgeText = isUpdate ? 'Updated Alert Rule' : 'New Alert Rule';
   const titleText = isUpdate ? 'Alert Subscription Updated' : 'Alert Subscription Confirmed';
   const descText = isUpdate
-    ? 'Your badminton court monitoring rule has been updated successfully. We will continuously track NVRC court openings based on your updated criteria.'
-    : 'Your badminton court monitoring rule is now active. We will continuously track NVRC court openings and notify you instantly when a slot opens up.';
+    ? 'Your badminton court monitoring rule has been updated successfully. Below is the updated rule along with your complete list of active monitoring rules.'
+    : 'Your new badminton court monitoring rule is now active. Below is the rule summary along with your complete list of active monitoring rules.';
 
-  // Format locations display
-  const allLocations = ['Delbrook', 'Lions Gate', 'Parkgate', 'John Braithwaite', 'Lynn Creek'];
-  const locationsDisplay = (!locations || locations.length === 0 || locations.length === allLocations.length)
-    ? 'All Locations (Delbrook, JBCC, Lions Gate, Parkgate, Lynn Creek)'
-    : locations.join(', ');
+  const allLocationsList = ['Delbrook', 'Lions Gate', 'Parkgate', 'John Braithwaite', 'Lynn Creek'];
+  const allWeekdaysList = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  // Format weekdays display
-  const allWeekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const weekdaysDisplay = (!weekdays || weekdays.length === 0 || weekdays.length === allWeekdays.length)
-    ? 'All Weekdays (Mon - Sun)'
-    : weekdays.map(d => d.slice(0, 3)).join(', ');
-
-  // Format time range display
   const formatTime = (timeStr) => {
     if (!timeStr || timeStr === '00:00:00') return '12:00 AM';
     if (timeStr === '23:59:59') return '11:59 PM';
@@ -43,9 +32,72 @@ export function generateConfirmationEmailHtml({
     return `${String(displayHour).padStart(2, '0')}:${parts[1]} ${ampm}`;
   };
 
-  const timeDisplay = (start_time_min === '00:00:00' && start_time_max === '23:59:59')
-    ? 'Any Time (All Day)'
-    : `${formatTime(start_time_min)} - ${formatTime(start_time_max)}`;
+  const formatLocations = (locs = []) => {
+    if (!locs || locs.length === 0 || locs.length === allLocationsList.length) {
+      return 'All Locations (Delbrook, JBCC, Lions Gate, Parkgate, Lynn Creek)';
+    }
+    return locs.join(', ');
+  };
+
+  const formatWeekdays = (days = []) => {
+    if (!days || days.length === 0 || days.length === allWeekdaysList.length) {
+      return 'All Weekdays (Mon - Sun)';
+    }
+    return days.map(d => d.slice(0, 3)).join(', ');
+  };
+
+  const formatTimeRange = (minTime, maxTime) => {
+    if ((!minTime || minTime === '00:00:00') && (!maxTime || maxTime === '23:59:59')) {
+      return 'Any Time (All Day)';
+    }
+    return `${formatTime(minTime)} - ${formatTime(maxTime)}`;
+  };
+
+  // Build current action rule card HTML
+  const currentLocationsDisplay = formatLocations(currentRule.locations);
+  const currentWeekdaysDisplay = formatWeekdays(currentRule.weekdays);
+  const currentTimeDisplay = formatTimeRange(currentRule.start_time_min, currentRule.start_time_max);
+
+  // Build other active rules cards HTML
+  const otherRules = (allRules || []).filter(r => r.id !== currentRule.id);
+  
+  let otherRulesHtml = '';
+  if (otherRules.length > 0) {
+    const otherCards = otherRules.map((rule, index) => {
+      const locs = formatLocations(rule.locations);
+      const days = formatWeekdays(rule.weekdays);
+      const time = formatTimeRange(rule.start_time_min, rule.start_time_max);
+      return `
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom: 12px;">
+          <tr>
+            <td>
+              <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
+                Rule #${index + 1}
+              </div>
+              <div style="font-size: 12.5px; color: #475569; margin-bottom: 4px;">
+                <strong>Venues:</strong> ${locs}
+              </div>
+              <div style="font-size: 12.5px; color: #475569; margin-bottom: 4px;">
+                <strong>Days:</strong> ${days}
+              </div>
+              <div style="font-size: 12.5px; color: #65a30d; font-weight: 600;">
+                <strong>Time:</strong> ${time}
+              </div>
+            </td>
+          </tr>
+        </table>
+      `;
+    }).join('');
+
+    otherRulesHtml = `
+      <div style="margin-top: 30px; margin-bottom: 25px;">
+        <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 14px;">
+          Other Active Alert Rules (${otherRules.length})
+        </h3>
+        ${otherCards}
+      </div>
+    `;
+  }
 
   return `
 <!DOCTYPE html>
@@ -73,7 +125,7 @@ export function generateConfirmationEmailHtml({
                   </td>
                   <td align="right">
                     <span style="background:#f7fee7; border:1px solid #bef264; color:#4d7c0f; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:700;">
-                      ${badgeText}
+                      Total Active Rules: ${totalCount}
                     </span>
                   </td>
                 </tr>
@@ -91,46 +143,52 @@ export function generateConfirmationEmailHtml({
                 ${descText}
               </p>
 
-              <!-- Subscription Rule Details Card -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom: 30px;">
+              <!-- Current Action Rule Details Card (Highlighted) -->
+              <div style="font-size: 12px; font-weight: 700; color: #4d7c0f; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                ${badgeText}
+              </div>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f7fee7; border:1.5px solid #bef264; border-radius:14px; padding:20px; margin-bottom: 10px;">
                 <tr>
                   <td style="padding-bottom: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #4d7c0f; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Target Venues
                     </span>
                     <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">
-                      ${locationsDisplay}
+                      ${currentLocationsDisplay}
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding-bottom: 14px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                  <td style="padding-bottom: 14px; border-top: 1px solid #d9f99d; padding-top: 14px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #4d7c0f; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Target Weekdays
                     </span>
                     <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">
-                      ${weekdaysDisplay}
+                      ${currentWeekdaysDisplay}
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="border-top: 1px solid #e2e8f0; padding-top: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                  <td style="border-top: 1px solid #d9f99d; padding-top: 14px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #4d7c0f; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Preferred Time Range
                     </span>
-                    <span style="font-size: 14.5px; font-weight: 700; color: #65a30d;">
-                      ${timeDisplay}
+                    <span style="font-size: 14.5px; font-weight: 700; color: #4d7c0f;">
+                      ${currentTimeDisplay}
                     </span>
                   </td>
                 </tr>
               </table>
 
+              <!-- Other Active Rules Section -->
+              ${otherRulesHtml}
+
               <!-- Call to Action Button -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 25px;">
                 <tr>
                   <td align="center">
                     <a href="https://badmintonspot.ca" target="_blank" style="display: inline-block; background-color: #65a30d; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 30px; border-radius: 12px; box-shadow: 0 4px 14px rgba(101,163,13,0.3);">
-                      Manage My Subscriptions
+                      Manage All Rules at badmintonspot.ca
                     </a>
                   </td>
                 </tr>

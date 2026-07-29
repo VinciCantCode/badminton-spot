@@ -53,14 +53,26 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to save subscription' });
       }
 
+      // Fetch all active rules for this email to include full summary in confirmation email
+      const { data: allUserRules } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('email', email)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
       // Send immediate Confirmation Email (Scenario A)
       try {
         await sendConfirmationEmail({
           email,
-          locations: record.locations,
-          weekdays: record.weekdays,
-          start_time_min: record.start_time_min,
-          start_time_max: record.start_time_max
+          currentRule: {
+            locations: record.locations,
+            weekdays: record.weekdays,
+            start_time_min: record.start_time_min,
+            start_time_max: record.start_time_max
+          },
+          allRules: allUserRules || [],
+          type: 'created'
         });
       } catch (err) {
         console.error('Error sending Scenario A confirmation email:', err);
