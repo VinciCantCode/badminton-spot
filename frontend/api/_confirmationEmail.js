@@ -47,24 +47,24 @@ export function generateConfirmationEmailHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subscription Confirmed</title>
 </head>
-<body style="margin:0; padding:0; background-color:#070a12; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#e2e8f0;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#070a12; padding: 40px 10px;">
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#334155;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f8fafc; padding: 40px 12px;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width:600px; background:linear-gradient(145deg, #0f172a 0%, #0b0f19 100%); border:1px solid rgba(255,255,255,0.1); border-radius:20px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width:600px; background-color:#ffffff; border:1px solid #e2e8f0; border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.06);">
           
           <!-- Header Bar -->
           <tr>
-            <td style="padding: 30px 35px; background: linear-gradient(135deg, rgba(163,230,53,0.12) 0%, rgba(15,23,42,0.8) 100%); border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <td style="padding: 28px 35px; background-color: #ffffff; border-bottom: 1px solid #f1f5f9;">
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
-                      Badminton<span style="color:#a3e635;">Spot</span>
+                    <span style="font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+                      Badminton<span style="color:#65a30d;">Spot</span>
                     </span>
                   </td>
                   <td align="right">
-                    <span style="background:rgba(163,230,53,0.15); border:1px solid rgba(163,230,53,0.4); color:#a3e635; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:700;">
+                    <span style="background:#f7fee7; border:1px solid #bef264; color:#4d7c0f; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:700;">
                       Active Alert Rule
                     </span>
                   </td>
@@ -76,41 +76,41 @@ export function generateConfirmationEmailHtml({
           <!-- Body Content -->
           <tr>
             <td style="padding: 35px;">
-              <h2 style="font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 12px;">
+              <h2 style="font-size: 24px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">
                 Alert Subscription Confirmed
               </h2>
-              <p style="font-size: 15px; color: #94a3b8; line-height: 1.6; margin-top: 0; margin-bottom: 25px;">
+              <p style="font-size: 15px; color: #64748b; line-height: 1.6; margin-top: 0; margin-bottom: 25px;">
                 Your badminton court monitoring rule is now active. We will continuously track NVRC court openings and notify you instantly when a slot opens up.
               </p>
 
               <!-- Subscription Rule Details Card -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:20px; margin-bottom: 30px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding-bottom: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Target Venues
                     </span>
-                    <span style="font-size: 14px; font-weight: 600; color: #f1f5f9;">
+                    <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">
                       ${locationsDisplay}
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding-bottom: 14px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                  <td style="padding-bottom: 14px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Target Weekdays
                     </span>
-                    <span style="font-size: 14px; font-weight: 600; color: #f1f5f9;">
+                    <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">
                       ${weekdaysDisplay}
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                  <td style="border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
                       Preferred Time Range
                     </span>
-                    <span style="font-size: 14px; font-weight: 600; color: #a3e635;">
+                    <span style="font-size: 14.5px; font-weight: 700; color: #65a30d;">
                       ${timeDisplay}
                     </span>
                   </td>
@@ -121,7 +121,7 @@ export function generateConfirmationEmailHtml({
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center">
-                    <a href="https://badmintonspot.ca" target="_blank" style="display: inline-block; background-color: #a3e635; color: #070a12; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 12px; box-shadow: 0 0 20px rgba(163,230,53,0.3);">
+                    <a href="https://badmintonspot.ca" target="_blank" style="display: inline-block; background-color: #65a30d; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 30px; border-radius: 12px; box-shadow: 0 4px 14px rgba(101,163,13,0.3);">
                       Manage My Subscriptions
                     </a>
                   </td>
@@ -132,12 +132,12 @@ export function generateConfirmationEmailHtml({
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 25px 35px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
-              <p style="font-size: 12px; color: #64748b; margin: 0 0 10px 0;">
+            <td style="padding: 24px 35px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="font-size: 12px; color: #64748b; margin: 0 0 8px 0;">
                 BadmintonSpot North Vancouver Court Availability Alerts
               </p>
-              <p style="font-size: 11px; color: #475569; margin: 0;">
-                Don't want to receive court alerts? <a href="${unsubscribeUrl}" target="_blank" style="color: #94a3b8; text-decoration: underline;">Unsubscribe in 1 click</a>
+              <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+                Don't want to receive court alerts? <a href="${unsubscribeUrl}" target="_blank" style="color: #64748b; text-decoration: underline;">Unsubscribe in 1 click</a>
               </p>
             </td>
           </tr>
