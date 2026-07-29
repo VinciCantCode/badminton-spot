@@ -732,7 +732,7 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
                     s["event_name"],
                     s["spots"],
                     f"${s['price']:.2f}",
-                    s["booking_url"]
+                    s.get("booking_url") or f"{BASE_URL}/23734/Clients/BookMe4LandingPages/CoursesLandingPage?widgetId={WIDGET_ID}&redirectedFromEmbededMode=False&courseId={s['event_id']}"
                 ])
             
             send_email_notification(user_config, formatted_slots)
