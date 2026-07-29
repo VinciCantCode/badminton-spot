@@ -875,8 +875,7 @@ function App() {
 
   // Helper to construct direct NVRC booking URL for a specific court slot
   const getBookingUrl = (slot) => {
-    if (slot.booking_url) return slot.booking_url
-    if (slot.event_id) {
+    if (slot && slot.event_id) {
       return `https://nvrc.perfectmind.com/23734/Clients/BookMe4LandingPages/CoursesLandingPage?widgetId=a28b2c65-61af-407f-80d1-eaa58f30a94a&redirectedFromEmbededMode=False&courseId=${slot.event_id}`
     }
     return "https://nvrc.perfectmind.com/23734/Clients/BookMe4BookingPages/BookingCoursesPage?calendarId=107644e1-183f-4052-a809-52e13ec76293&widgetId=a28b2c65-61af-407f-80d1-eaa58f30a94a&embed=False"
