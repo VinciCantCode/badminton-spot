@@ -463,15 +463,11 @@ function App() {
     setUserSubsError('')
 
     if (newLocations.length === 0) {
-      const msg = 'Please select at least one location.'
-      setUserSubsError(msg)
-      showToast(msg)
+      setUserSubsError('Please select at least one location.')
       return
     }
     if (newDays.length === 0) {
-      const msg = 'Please select at least one weekday.'
-      setUserSubsError(msg)
-      showToast(msg)
+      setUserSubsError('Please select at least one weekday.')
       return
     }
 
@@ -502,7 +498,6 @@ function App() {
       showToast('New alert rule created successfully!')
     } catch (err) {
       setUserSubsError(err.message || 'Error creating subscription rule.')
-      showToast(err.message || 'Error creating subscription rule.')
     }
   }
 
@@ -644,7 +639,6 @@ function App() {
       showToast('Subscription deleted successfully.')
     } catch (err) {
       setUserSubsError(err.message || 'Error deleting subscription.')
-      showToast(err.message || 'Error deleting subscription.')
     }
   }
 
@@ -665,15 +659,11 @@ function App() {
     setUserSubsError('')
 
     if (editLocations.length === 0) {
-      const msg = 'Please select at least one location.'
-      setUserSubsError(msg)
-      showToast(msg)
+      setUserSubsError('Please select at least one location.')
       return
     }
     if (editDays.length === 0) {
-      const msg = 'Please select at least one weekday.'
-      setUserSubsError(msg)
-      showToast(msg)
+      setUserSubsError('Please select at least one weekday.')
       return
     }
 
@@ -705,7 +695,6 @@ function App() {
       showToast('Subscription criteria updated!')
     } catch (err) {
       setUserSubsError(err.message || 'Error updating subscription.')
-      showToast(err.message || 'Error updating subscription.')
     }
   }
 
@@ -1010,12 +999,10 @@ function App() {
 
     if (modalLocations.length === 0) {
       setVerificationError('Please select at least one location.')
-      showToast('Please select at least one location.')
       return
     }
     if (modalDays.length === 0) {
       setVerificationError('Please select at least one weekday.')
-      showToast('Please select at least one weekday.')
       return
     }
 
