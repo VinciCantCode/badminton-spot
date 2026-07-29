@@ -630,7 +630,6 @@ def run_supabase_monitor_cycle(config, supabase_url, supabase_key):
             "spots_count": spots_count,
             "price": price,
             "button_text": button_text,
-            "booking_url": booking_url,
             "last_updated": datetime.now().astimezone().isoformat()
         }
         all_slots_payload.append(slot_payload)
