@@ -42,13 +42,20 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { locations, weekdays, start_time_min, start_time_max } = req.body || {};
 
+    if (!locations || !Array.isArray(locations) || locations.length === 0) {
+      return res.status(400).json({ error: 'Please select at least one location' });
+    }
+    if (!weekdays || !Array.isArray(weekdays) || weekdays.length === 0) {
+      return res.status(400).json({ error: 'Please select at least one weekday' });
+    }
+
     try {
       const { data, error } = await supabase
         .from('subscriptions')
         .insert({
           email: userEmail,
-          locations: Array.isArray(locations) && locations.length > 0 ? locations : ['Delbrook', 'Lions Gate', 'Parkgate', 'John Braithwaite', 'Lynn Creek'],
-          weekdays: Array.isArray(weekdays) && weekdays.length > 0 ? weekdays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+          locations,
+          weekdays,
           start_time_min: start_time_min || '00:00:00',
           start_time_max: start_time_max || '23:59:59',
           is_active: true
@@ -91,6 +98,13 @@ export default async function handler(req, res) {
     const { id, locations, weekdays, start_time_min, start_time_max, is_active } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'Subscription ID is required' });
+    }
+
+    if (locations !== undefined && (!Array.isArray(locations) || locations.length === 0)) {
+      return res.status(400).json({ error: 'Please select at least one location' });
+    }
+    if (weekdays !== undefined && (!Array.isArray(weekdays) || weekdays.length === 0)) {
+      return res.status(400).json({ error: 'Please select at least one weekday' });
     }
 
     try {

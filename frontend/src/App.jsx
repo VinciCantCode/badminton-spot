@@ -461,6 +461,17 @@ function App() {
   const handleCreateNewRuleSubmit = async (e) => {
     e.preventDefault()
 
+    if (newLocations.length === 0) {
+      showToast('Please select at least one location.')
+      alert('Please select at least one location.')
+      return
+    }
+    if (newDays.length === 0) {
+      showToast('Please select at least one weekday.')
+      alert('Please select at least one weekday.')
+      return
+    }
+
     try {
       const response = await fetch('/api/user/subscriptions', {
         method: 'POST',
@@ -469,8 +480,8 @@ function App() {
           'Authorization': `Bearer ${sessionToken}`
         },
         body: JSON.stringify({
-          locations: newLocations.length > 0 ? newLocations : LOCATIONS.map(l => l.id),
-          weekdays: newDays.length > 0 ? newDays : Object.values(WEEKDAY_FULL_NAMES),
+          locations: newLocations,
+          weekdays: newDays,
           start_time_min: newMinTime,
           start_time_max: newMaxTime
         })
@@ -645,6 +656,17 @@ function App() {
   const handleSaveEditSubSubmit = async (e) => {
     e.preventDefault()
     if (!editingSub) return
+
+    if (editLocations.length === 0) {
+      showToast('Please select at least one location.')
+      alert('Please select at least one location.')
+      return
+    }
+    if (editDays.length === 0) {
+      showToast('Please select at least one weekday.')
+      alert('Please select at least one weekday.')
+      return
+    }
 
     try {
       const response = await fetch('/api/user/subscriptions', {
@@ -958,10 +980,10 @@ function App() {
     setIsModalOpen(true)
   }
 
-  // Open empty modal
+  // Open new alert modal with all locations and days pre-selected by default
   const handleNewAlertClick = () => {
-    setModalLocations([])
-    setModalDays([])
+    setModalLocations(LOCATIONS.map(l => l.id))
+    setModalDays(Object.values(WEEKDAY_FULL_NAMES))
     setStartTimeMin('00:00:00')
     setStartTimeMax('23:59:59')
     setSubscribeSuccess(false)
@@ -976,6 +998,17 @@ function App() {
     e.preventDefault()
     if (!email) return
 
+    if (modalLocations.length === 0) {
+      setVerificationError('Please select at least one location.')
+      showToast('Please select at least one location.')
+      return
+    }
+    if (modalDays.length === 0) {
+      setVerificationError('Please select at least one weekday.')
+      showToast('Please select at least one weekday.')
+      return
+    }
+
     setSendingCode(true)
     setVerificationError('')
     try {
@@ -984,8 +1017,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          locations: modalLocations.length > 0 ? modalLocations : LOCATIONS.map(l => l.id),
-          weekdays: modalDays.length > 0 ? modalDays : Object.values(WEEKDAY_FULL_NAMES),
+          locations: modalLocations,
+          weekdays: modalDays,
           start_time_min: startTimeMin,
           start_time_max: startTimeMax
         })
