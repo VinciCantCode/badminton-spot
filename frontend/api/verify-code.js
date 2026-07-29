@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { signToken } from './_jwt.js';
+import { sendConfirmationEmail } from './_confirmationEmail.js';
 
 export default async function handler(req, res) {
   // Reject non-POST requests
@@ -51,6 +52,15 @@ export default async function handler(req, res) {
         console.error('Database error inserting official subscription:', insertError);
         return res.status(500).json({ error: 'Failed to save subscription' });
       }
+
+      // Send immediate Confirmation Email (Scenario A)
+      sendConfirmationEmail({
+        email,
+        locations: record.locations,
+        weekdays: record.weekdays,
+        start_time_min: record.start_time_min,
+        start_time_max: record.start_time_max
+      }).catch(err => console.error('Error sending Scenario A confirmation email:', err));
     }
 
     // Clean up/delete the verification record so it cannot be reused
