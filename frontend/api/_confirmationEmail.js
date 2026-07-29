@@ -156,26 +156,32 @@ export async function sendConfirmationEmail(options) {
   if (!email) return;
 
   try {
+    const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER;
+    const senderPassword = process.env.SENDER_PASSWORD || process.env.SMTP_PASS;
+
+    if (!senderEmail || !senderPassword) {
+      console.error('Missing SENDER_EMAIL or SENDER_PASSWORD environment variables for confirmation email');
+      return;
+    }
+
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
+      service: 'gmail',
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: senderEmail,
+        pass: senderPassword
       }
     });
 
     const html = generateConfirmationEmailHtml(options);
 
     await transporter.sendMail({
-      from: `"BadmintonSpot Alerts" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      from: `"BadmintonSpot Alerts" <${senderEmail}>`,
       to: email,
       subject: '[BadmintonSpot] Alert Subscription Confirmed!',
       html
     });
+    console.log('Confirmation email successfully sent to:', email);
   } catch (err) {
     console.error('Error sending confirmation email via Nodemailer:', err);
-    // Non-blocking error so subscription process still succeeds
   }
 }

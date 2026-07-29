@@ -54,13 +54,17 @@ export default async function handler(req, res) {
       }
 
       // Send immediate Confirmation Email (Scenario A)
-      sendConfirmationEmail({
-        email,
-        locations: record.locations,
-        weekdays: record.weekdays,
-        start_time_min: record.start_time_min,
-        start_time_max: record.start_time_max
-      }).catch(err => console.error('Error sending Scenario A confirmation email:', err));
+      try {
+        await sendConfirmationEmail({
+          email,
+          locations: record.locations,
+          weekdays: record.weekdays,
+          start_time_min: record.start_time_min,
+          start_time_max: record.start_time_max
+        });
+      } catch (err) {
+        console.error('Error sending Scenario A confirmation email:', err);
+      }
     }
 
     // Clean up/delete the verification record so it cannot be reused

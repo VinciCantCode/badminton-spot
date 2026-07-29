@@ -59,13 +59,17 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       // Send immediate Confirmation Email (Scenario B)
-      sendConfirmationEmail({
-        email: userEmail,
-        locations: data.locations,
-        weekdays: data.weekdays,
-        start_time_min: data.start_time_min,
-        start_time_max: data.start_time_max
-      }).catch(err => console.error('Error sending Scenario B confirmation email:', err));
+      try {
+        await sendConfirmationEmail({
+          email: userEmail,
+          locations: data.locations,
+          weekdays: data.weekdays,
+          start_time_min: data.start_time_min,
+          start_time_max: data.start_time_max
+        });
+      } catch (err) {
+        console.error('Error sending Scenario B confirmation email:', err);
+      }
 
       return res.status(201).json({ success: true, subscription: data });
     } catch (err) {
