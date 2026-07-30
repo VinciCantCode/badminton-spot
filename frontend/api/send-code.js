@@ -26,12 +26,16 @@ export default async function handler(req, res) {
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes expiration
 
-    // Validate that at least one location and one weekday are selected
-    if (!locations || !Array.isArray(locations) || locations.length === 0) {
-      return res.status(400).json({ error: 'Please select at least one location' });
+    // Validate selection criteria ONLY when creating a new subscription (locations/weekdays provided)
+    if (locations !== undefined) {
+      if (!Array.isArray(locations) || locations.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one location' });
+      }
     }
-    if (!weekdays || !Array.isArray(weekdays) || weekdays.length === 0) {
-      return res.status(400).json({ error: 'Please select at least one weekday' });
+    if (weekdays !== undefined) {
+      if (!Array.isArray(weekdays) || weekdays.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one weekday' });
+      }
     }
 
     // Upsert verification record (overwrites old pending code for this email)
@@ -40,8 +44,8 @@ export default async function handler(req, res) {
       .upsert({
         email,
         code,
-        locations: locations,
-        weekdays: weekdays,
+        locations: locations || [],
+        weekdays: weekdays || [],
         start_time_min: start_time_min || '00:00:00',
         start_time_max: start_time_max || '23:59:59',
         expires_at: expiresAt
