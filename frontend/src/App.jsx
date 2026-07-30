@@ -720,16 +720,26 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error } = await supabase
-        .from('slots')
-        .select('*')
-        .order('start_time', { ascending: true })
-
-      if (error) throw error
+      const response = await fetch('/api/slots')
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`)
+      }
+      const data = await response.json()
       setSlots(data || [])
     } catch (err) {
-      console.error('Error fetching slots:', err)
-      setError('Failed to fetch real-time court availability.')
+      console.warn('Edge Cache API fetch unavailable, falling back to direct Supabase query:', err)
+      try {
+        const { data, error } = await supabase
+          .from('slots')
+          .select('*')
+          .order('start_time', { ascending: true })
+
+        if (error) throw error
+        setSlots(data || [])
+      } catch (fallbackErr) {
+        console.error('Error fetching slots:', fallbackErr)
+        setError('Failed to fetch real-time court availability.')
+      }
     } finally {
       setLoading(false)
     }
